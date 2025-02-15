@@ -1,48 +1,39 @@
 const dbConfig = require("../config/db.config.js");
 const Sequelize = require("sequelize");
 
-// Inicializamos Sequelize con la configuración de la BD
-const sequelize = new Sequelize(
-  dbConfig.DB,
-  dbConfig.USER,
-  dbConfig.PASSWORD,
-  {
-    host: dbConfig.HOST,
-    port: dbConfig.PORT,
-    dialect: "mysql",
-  }
-);
+const sequelize = new Sequelize(dbConfig.DB, dbConfig.USER, dbConfig.PASSWORD, {
+  host: dbConfig.HOST,
+  port: dbConfig.PORT,
+  dialect: "mysql",
+});
 
 const db = {};
 db.Sequelize = Sequelize;
 db.sequelize = sequelize;
 
-// Importamos los modelos
+// Modelos
 db.usuario = require("./usuario.model.js")(sequelize, Sequelize);
-//db.producto = require("./producto.model.js")(sequelize, Sequelize);
 db.compra = require("./compra.model.js")(sequelize, Sequelize);
 db.venta = require("./venta.model.js")(sequelize, Sequelize);
 
 /* 
-  Definición de Relaciones
+  Relaciones Actualizadas
   ------------------------
-  1) Un usuario (tipo: vendedor) puede realizar muchas compras.
-  2) Un usuario (tipo: vendedor) puede realizar muchas ventas.
-  3) Un producto puede aparecer en muchas compras.
-  4) Un producto puede aparecer en muchas ventas.
+  1. Un usuario (vendedor) puede tener muchas compras y ventas.
+  2. Un usuario (cliente) puede tener muchas ventas asociadas.
 */
 
-// 1. Relación 1:N - Usuarios (vendedores) y Compras
+// 1. Relación Usuario (vendedor) -> Compras
 db.usuario.hasMany(db.compra, {
   foreignKey: "usuarioId",
-  as: "comprasRealizadas" // alias de la relación
+  as: "comprasRealizadas"
 });
 db.compra.belongsTo(db.usuario, {
   foreignKey: "usuarioId",
-  as: "vendedorCompra" // alias inverso
+  as: "vendedorCompra"
 });
 
-// 2. Relación 1:N - Usuarios (vendedores) y Ventas
+// 2. Relación Usuario (vendedor) -> Ventas (como vendedor)
 db.usuario.hasMany(db.venta, {
   foreignKey: "usuarioId",
   as: "ventasRealizadas"
@@ -52,6 +43,14 @@ db.venta.belongsTo(db.usuario, {
   as: "vendedorVenta"
 });
 
-
+// 3. Nueva Relación: Usuario (cliente) -> Ventas (como cliente)
+db.usuario.hasMany(db.venta, {
+  foreignKey: "clienteId",
+  as: "ventasComoCliente"
+});
+db.venta.belongsTo(db.usuario, {
+  foreignKey: "clienteId",
+  as: "clienteVenta"
+});
 
 module.exports = db;

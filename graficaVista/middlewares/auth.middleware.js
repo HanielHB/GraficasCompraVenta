@@ -1,12 +1,7 @@
-// middlewares/auth.middleware.js
-
 const jwt = require("jsonwebtoken");
+const SECRET_KEY = process.env.SECRET_KEY || "mi_secreto_super_seguro";
 
-const SECRET_KEY = process.env.SECRET_KEY || "mi_secreto_super_seguro"; 
-// Usa una variable de entorno para mayor seguridad.
-
-// Middleware para verificar el token
-// middlewares/auth.middleware.js
+// Middleware base: Verificar token y extraer datos del usuario
 exports.verifyToken = (req, res, next) => {
     const token = req.headers['authorization'];
     
@@ -16,16 +11,12 @@ exports.verifyToken = (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token.split(" ")[1], SECRET_KEY);
-        
-        // Agregar más datos al usuario
         req.user = {
             id: decoded.id,
             tipo: decoded.tipo,
-            // Agregar estos nuevos campos si están en el token
-            nombre: decoded.nombre,    // Asegurar que el token incluya estos
-            apellido: decoded.apellido // campos al hacer login
+            nombre: decoded.nombre,
+            apellido: decoded.apellido
         };
-        
         next();
     } catch (error) {
         console.error("Error verificando el token:", error.message);
@@ -33,20 +24,46 @@ exports.verifyToken = (req, res, next) => {
     }
 };
 
-// Middleware para verificar si es admin
+// Middleware: Solo administradores
 exports.isAdmin = (req, res, next) => {
-    console.log("Usuario en req.user:", req.user);
     if (req.user.tipo !== "admin") {
-        return res.status(403).json({ msg: "No tienes permisos de administrador" });
+        return res.status(403).json({ msg: "Acceso restringido a administradores" });
     }
     next();
 };
 
-// Middleware para verificar si es vendedor
+// Middleware: Solo vendedores
 exports.isVendedor = (req, res, next) => {
-    console.log("Usuario en req.user:", req.user);
     if (req.user.tipo !== "vendedor") {
-        return res.status(403).json({ msg: "No tienes permisos de vendedor" });
+        return res.status(403).json({ msg: "Acceso restringido a vendedores" });
+    }
+    next();
+};
+
+// Middleware: Solo clientes
+exports.isCliente = (req, res, next) => {
+    if (req.user.tipo !== "cliente") {
+        return res.status(403).json({ msg: "Acceso restringido a clientes" });
+    }
+    next();
+};
+
+// Middleware: Admin o Vendedor
+exports.isAdminOrVendedor = (req, res, next) => {
+    if (!["admin", "vendedor"].includes(req.user.tipo)) {
+        return res.status(403).json({ 
+            msg: "Acceso restringido a administradores o vendedores" 
+        });
+    }
+    next();
+};
+
+// Middleware: Usuario dueño del recurso o Admin
+exports.isOwnerOrAdmin = (resourceUserId) => (req, res, next) => {
+    if (req.user.tipo !== "admin" && req.user.id !== resourceUserId) {
+        return res.status(403).json({ 
+            msg: "No tienes permisos sobre este recurso" 
+        });
     }
     next();
 };

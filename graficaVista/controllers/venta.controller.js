@@ -9,7 +9,16 @@ exports.listVentas = async (req, res) => {
         // Incluimos opcionalmente usuario (vendedor) y producto asociado
         const ventas = await db.venta.findAll({
             include: [
-                { model: db.usuario, as: "vendedorVenta" }
+                { 
+                    model: db.usuario, 
+                    as: "vendedorVenta",  // Alias para el vendedor
+                    attributes: ["id", "nombre", "apellido", "tipo"] 
+                },
+                { 
+                    model: db.usuario, 
+                    as: "clienteVenta",   // Alias para el cliente
+                    attributes: ["id", "nombre", "apellido", "tipo"] 
+                }
             ]
         });
         res.json(ventas);
@@ -32,18 +41,19 @@ exports.getVentaById = async (req, res) => {
 
 // 3. Crear una nueva venta
 exports.createVenta = async (req, res) => {
-    // Campos requeridos para crear una venta, ahora incluyendo 'precio'
-    const requiredFields = ["usuarioId", "productoName", "cantidad", "fecha", "precio"];
+    // Agrega clienteId a los campos requeridos
+    const requiredFields = ["usuarioId", "clienteId", "productoName", "cantidad", "fecha", "precio"];
     if (!isRequestValid(requiredFields, req.body, res)) return;
 
     try {
-        const { usuarioId, productoName, cantidad, fecha, precio } = req.body;
+        const { usuarioId, clienteId, productoName, cantidad, fecha, precio } = req.body;
         const nuevaVenta = await db.venta.create({
-            usuarioId,
+            usuarioId,    // ID del vendedor
+            clienteId,    // ID del cliente (usuario de tipo 'cliente')
             productoName,
             cantidad,
             fecha,
-            precio // Asegúrate de guardar el precio
+            precio
         });
         res.status(201).json(nuevaVenta);
     } catch (error) {

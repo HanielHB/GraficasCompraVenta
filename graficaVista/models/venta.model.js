@@ -21,6 +21,15 @@ module.exports = (sequelize, Sequelize) => {
         usuarioId: {
             type: Sequelize.INTEGER,
             allowNull: false
+        },
+        // Cliente (usuario de tipo 'cliente')
+        clienteId: {
+            type: Sequelize.INTEGER,
+            allowNull: false,
+            references: {
+                model: 'usuarios', // Misma tabla de usuarios
+                key: 'id'
+            }
         }
     }, {
         timestamps: true,

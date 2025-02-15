@@ -20,6 +20,8 @@ const FormVenta = ({ handleShowVentas }) => {
     const [productoName, setProductoName] = useState('');
     const [precio, setPrecio] = useState('');
     const [currentUser, setCurrentUser] = useState(null);
+    const [clientes, setClientes] = useState([]);
+    const [clienteId, setClienteId] = useState('');
     const [validated, setValidated] = useState(false);
     const [formValid, setFormValid] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -31,6 +33,13 @@ const FormVenta = ({ handleShowVentas }) => {
         })
         .then(res => setCurrentUser(res.data))
         .catch(error => console.error("Error al obtener usuario:", error));
+
+        // Obtener lista de clientes
+        axios.get("http://localhost:3000/usuarios?tipo=cliente", {
+            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        })
+        .then(res => setClientes(res.data))
+        .catch(error => console.error("Error al obtener clientes:", error));
 
         if (id) {
             getVentaById();
@@ -44,13 +53,14 @@ const FormVenta = ({ handleShowVentas }) => {
                 fecha &&
                 productoName.trim() &&
                 precio > 0 &&
-                currentUser?.id
+                currentUser?.id &&
+                clienteId
             );
             setFormValid(isValid);
         };
         
         validateForm();
-    }, [cantidad, fecha, productoName, precio, currentUser]);
+    }, [cantidad, fecha, productoName, precio, currentUser, clienteId]);
 
     const getVentaById = () => {
         axios.get(`http://localhost:3000/ventas/${id}`, {
@@ -62,6 +72,7 @@ const FormVenta = ({ handleShowVentas }) => {
             setFecha(new Date(venta.fecha).toISOString().split('T')[0]);
             setProductoName(venta.productoName);
             setPrecio(venta.precio);
+            setClienteId(venta.clienteId);
         })
         .catch(error => {
             console.error("Error al obtener la venta:", error);
@@ -84,7 +95,8 @@ const FormVenta = ({ handleShowVentas }) => {
             fecha: new Date(fecha).toISOString(),
             productoName: productoName,
             precio: parseFloat(precio),
-            usuarioId: currentUser.id
+            usuarioId: currentUser.id,
+            clienteId: clienteId
         };
 
         if (id) {
@@ -184,6 +196,26 @@ const FormVenta = ({ handleShowVentas }) => {
                                     />
                                     <Form.Control.Feedback type="invalid">
                                         Ingrese un producto
+                                    </Form.Control.Feedback>
+                                </Form.Group>
+
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Cliente:</Form.Label>
+                                    <Form.Select
+                                        value={clienteId}
+                                        onChange={(e) => setClienteId(e.target.value)}
+                                        required
+                                        isInvalid={validated && !clienteId}
+                                    >
+                                        <option value="">Seleccione un cliente</option>
+                                        {clientes.map(cliente => (
+                                            <option key={cliente.id} value={cliente.id}>
+                                                {cliente.nombre} {cliente.apellido}
+                                            </option>
+                                        ))}
+                                    </Form.Select>
+                                    <Form.Control.Feedback type="invalid">
+                                        Seleccione un cliente
                                     </Form.Control.Feedback>
                                 </Form.Group>
 
