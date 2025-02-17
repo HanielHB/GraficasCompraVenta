@@ -4,11 +4,19 @@ const { isRequestValid, sendError500 } = require("../utils/request.utils");
 // 1. Listar todas las compras
 exports.listCompras = async (req, res) => {
     try {
-        // Incluimos opcionalmente usuario (vendedor) y producto asociado
+        // Incluimos opcionalmente usuario (vendedor) y cliente asociado
         const compras = await db.compra.findAll({
-            //where: { usuarioId: req.user.id }, // Filtrar por el usuario autenticado
-            include: [
-                { model: db.usuario, as: "vendedorCompra" }
+            include:  [
+                { 
+                    model: db.usuario, 
+                    as: "vendedorCompra",  // Corregido: antes estaba como "vendedorVenta"
+                    attributes: ["id", "nombre", "apellido", "tipo"] 
+                },
+                { 
+                    model: db.usuario, 
+                    as: "clienteCompra", // Corregido: antes estaba como "clienteVenta"
+                    attributes: ["id", "nombre", "apellido", "tipo"] 
+                }
             ]
         });
         res.json(compras);
@@ -32,13 +40,14 @@ exports.getCompraById = async (req, res) => {
 // 3. Crear una nueva compra
 exports.createCompra = async (req, res) => {
     // Campos requeridos para crear una compra
-    const requiredFields = ["usuarioId", "productoName", "cantidad", "precio","fecha"];
+    const requiredFields = ["usuarioId", "productoName", "cantidad", "precio", "fecha", "clienteId"];
     if (!isRequestValid(requiredFields, req.body, res)) return;
 
     try {
-        const { usuarioId, productoName, cantidad, precio,fecha } = req.body;
+        const { usuarioId, clienteId, productoName, cantidad, precio, fecha } = req.body;
         const nuevaCompra = await db.compra.create({
-            usuarioId,
+            usuarioId, // Vendedor
+            clienteId, // Nuevo campo para asignar el cliente
             productoName,
             cantidad,
             precio,
@@ -58,6 +67,7 @@ exports.updateCompra = async (req, res) => {
         if (!compra) return;
 
         if (req.body.usuarioId) compra.usuarioId = req.body.usuarioId;
+        if (req.body.clienteId) compra.clienteId = req.body.clienteId; // Agregado clienteId
         if (req.body.productoName) compra.productoName = req.body.productoName;
         if (req.body.cantidad) compra.cantidad = req.body.cantidad;
         if (req.body.precio) compra.precio = req.body.precio;
@@ -88,7 +98,8 @@ exports.deleteCompra = async (req, res) => {
 async function getCompraOr404(id, res) {
     const compra = await db.compra.findByPk(id, {
         include: [
-            { model: db.usuario, as: "vendedorCompra" }
+            { model: db.usuario, as: "vendedorCompra" },
+            { model: db.usuario, as: "clienteCompra" } // Agregado para mostrar cliente en detalle
         ]
     });
     if (!compra) {

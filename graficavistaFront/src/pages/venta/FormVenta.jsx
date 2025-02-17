@@ -25,6 +25,8 @@ const FormVenta = ({ handleShowVentas }) => {
     const [validated, setValidated] = useState(false);
     const [formValid, setFormValid] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [error, setError] = useState(null);
+    const [loadingClientes, setLoadingClientes] = useState(true);
 
     useEffect(() => {
         // Obtener usuario logueado
@@ -32,14 +34,27 @@ const FormVenta = ({ handleShowVentas }) => {
             headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         })
         .then(res => setCurrentUser(res.data))
-        .catch(error => console.error("Error al obtener usuario:", error));
+        .catch(error => {
+            console.error("Error al obtener usuario:", error);
+            setError("Error al cargar datos del usuario");
+        });
 
         // Obtener lista de clientes
         axios.get("http://localhost:3000/usuarios?tipo=cliente", {
             headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         })
-        .then(res => setClientes(res.data))
-        .catch(error => console.error("Error al obtener clientes:", error));
+        .then(res => {
+            setClientes(res.data);
+            setLoadingClientes(false);
+            if (res.data.length === 0) {
+                setError("No hay clientes registrados en el sistema");
+            }
+        })
+        .catch(error => {
+            console.error("Error al obtener clientes:", error);
+            setError("Error al cargar la lista de clientes");
+            setLoadingClientes(false);
+        });
 
         if (id) {
             getVentaById();
@@ -54,13 +69,14 @@ const FormVenta = ({ handleShowVentas }) => {
                 productoName.trim() &&
                 precio > 0 &&
                 currentUser?.id &&
-                clienteId
+                clienteId &&
+                clientes.length > 0 // Nueva validación
             );
             setFormValid(isValid);
         };
         
         validateForm();
-    }, [cantidad, fecha, productoName, precio, currentUser, clienteId]);
+    }, [cantidad, fecha, productoName, precio, currentUser, clienteId, clientes]);
 
     const getVentaById = () => {
         axios.get(`http://localhost:3000/ventas/${id}`, {
@@ -76,6 +92,7 @@ const FormVenta = ({ handleShowVentas }) => {
         })
         .catch(error => {
             console.error("Error al obtener la venta:", error);
+            setError("Error al cargar los datos de la venta");
         });
     };
 
@@ -85,6 +102,7 @@ const FormVenta = ({ handleShowVentas }) => {
         e.stopPropagation();
 
         setValidated(true);
+        setError(null);
 
         if (!formValid || form.checkValidity() === false) {
             return;
@@ -112,7 +130,8 @@ const FormVenta = ({ handleShowVentas }) => {
         })
         .then(() => setShowSuccessModal(true))
         .catch(error => {
-            console.error("Error al editar la venta:", error.response?.data);
+            const errorMsg = error.response?.data?.msg || "Error al actualizar la venta";
+            setError(errorMsg);
         });
     };
 
@@ -122,7 +141,8 @@ const FormVenta = ({ handleShowVentas }) => {
         })
         .then(() => setShowSuccessModal(true))
         .catch(error => {
-            console.error("Error al crear la venta:", error.response?.data);
+            const errorMsg = error.response?.data?.msg || "Error al crear la venta";
+            setError(errorMsg);
         });
     };
 
@@ -201,19 +221,36 @@ const FormVenta = ({ handleShowVentas }) => {
 
                                 <Form.Group className="mb-3">
                                     <Form.Label>Cliente:</Form.Label>
-                                    <Form.Select
-                                        value={clienteId}
-                                        onChange={(e) => setClienteId(e.target.value)}
-                                        required
-                                        isInvalid={validated && !clienteId}
-                                    >
-                                        <option value="">Seleccione un cliente</option>
-                                        {clientes.map(cliente => (
-                                            <option key={cliente.id} value={cliente.id}>
-                                                {cliente.nombre} {cliente.apellido}
-                                            </option>
-                                        ))}
-                                    </Form.Select>
+                                    {loadingClientes ? (
+                                        <Form.Control
+                                            as="div"
+                                            className="text-muted"
+                                        >
+                                            Cargando lista de clientes...
+                                        </Form.Control>
+                                    ) : (
+                                        <>
+                                            <Form.Select
+                                                value={clienteId}
+                                                onChange={(e) => setClienteId(e.target.value)}
+                                                required
+                                                isInvalid={validated && !clienteId}
+                                                disabled={clientes.length === 0}
+                                            >
+                                                <option value="">Seleccione un cliente</option>
+                                                {clientes.map(cliente => (
+                                                    <option key={cliente.id} value={cliente.id}>
+                                                        {cliente.nombre} {cliente.apellido}
+                                                    </option>
+                                                ))}
+                                            </Form.Select>
+                                            {clientes.length === 0 && (
+                                                <Form.Text className="text-danger">
+                                                    No hay clientes disponibles
+                                                </Form.Text>
+                                            )}
+                                        </>
+                                    )}
                                     <Form.Control.Feedback type="invalid">
                                         Seleccione un cliente
                                     </Form.Control.Feedback>

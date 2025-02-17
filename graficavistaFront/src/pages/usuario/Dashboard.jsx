@@ -47,9 +47,21 @@ const Dashboard = () => {
 
     useEffect(() => {
         verificarRol();
-        fetchVentas();  // Cargar ventas cuando se monte el componente
+        fetchVentas();
         document.title = "Dashboard";
-    }, []);
+    
+        
+    }, []); 
+    
+    
+    useEffect(() => {
+        if (isVendedor) {
+            setShowUsuarios(false); // Ocultar usuarios
+            setShowVentasGraf(true); // Asegurarse de que el gráfico de ventas se muestra
+            navigate('/dashboard/ventas/grafico'); // Redirigir al gráfico de ventas
+        }
+    }, [isVendedor, navigate]); // Se ejecuta cuando cambia isVendedor
+    
 
     const verificarRol = () => {
         const token = localStorage.getItem("token");
@@ -57,7 +69,7 @@ const Dashboard = () => {
             navigate("/login");
             return;
         }
-
+    
         axios.get("http://localhost:3000/usuarios/rol", {
             headers: { Authorization: `Bearer ${token}` },
         })
@@ -71,23 +83,27 @@ const Dashboard = () => {
                     apellido: userRes.data.apellido,
                     tipo: rolRes.data.tipo
                 });
-                
+    
                 if (rolRes.data.tipo === "admin") {
                     setIsAdmin(true);
                 } else if (rolRes.data.tipo === "vendedor") {
                     setIsVendedor(true);
+                    setShowUsuarios(false); // No mostrar ListUsuario si es vendedor
+                    navigate('/dashboard/ventas/grafico'); // Redirigir a ventas gráficos si es vendedor
                 }
             })
             .catch(() => {
                 alert("Error cargando datos del usuario");
-                navigate("/login");
+                navigate("/");
             });
         })
         .catch(() => {
             localStorage.removeItem("token");
-            navigate("/login");
+            navigate("/");
         });
     };
+    
+    
 
     const fetchVentas = () => {
         const token = localStorage.getItem("token"); // Asegúrate de obtener el token desde localStorage

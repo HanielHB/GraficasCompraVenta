@@ -52,5 +52,15 @@ db.venta.belongsTo(db.usuario, {
   foreignKey: "clienteId",
   as: "clienteVenta"
 });
+// 4. Nueva Relación: Usuario (cliente) -> Compras (como cliente)
+db.usuario.hasMany(db.compra, {
+  foreignKey: "clienteId",
+  as: "comprasComoCliente"
+});
+db.compra.belongsTo(db.usuario, {
+  foreignKey: "clienteId",
+  as: "clienteCompra"
+});
+
 
 module.exports = db;

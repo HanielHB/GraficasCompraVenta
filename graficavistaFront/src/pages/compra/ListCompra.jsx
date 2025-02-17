@@ -86,40 +86,41 @@ const ListCompra = ({ handleShowFormCompra, handleRefresh }) => {
                     <tbody>
                         {compras.length === 0 ? (
                             <tr>
-                                <td colSpan="6" className="text-center">No se encontraron compras</td>
+                            <td colSpan="8" className="text-center">No se encontraron compras</td>
                             </tr>
                         ) : (
                             compras.map(compra => (
-                                <tr key={compra.id}>
-                                    <td>{compra.id}</td>
-                                    <td>{compra.productoName}</td>
-                                    <td>{compra.cantidad}</td>
-                                    <td>Bs {Number(compra.precio || 0).toFixed(2)}</td>
-                                    <td>Bs {(compra.cantidad * Number(compra.precio || 0)).toFixed(2)}</td>
-                                    <td>{formatFecha(compra.fecha)}</td>
-                                    <td>{compra.vendedorCompra?.nombre || `Usuario #${compra.usuarioId}`}</td>
-                                    <td className="d-flex justify-content-center align-items-center">
-                                        <Button 
-                                            variant="info" 
-                                            onClick={() => editarCompra(compra.id)} 
-                                            className="me-2"
-                                        >
-                                            <FiEdit /> Editar
-                                        </Button>
-                                        <Button 
-                                            variant="danger" 
-                                            onClick={() => {
-                                                setSelectedId(compra.id);
-                                                setShowModal(true);
-                                            }}
-                                        >
-                                            <FiTrash2 /> Eliminar
-                                        </Button>
-                                    </td>
-                                </tr>
+                            <tr key={compra.id}>
+                                <td>{compra.id}</td>
+                                <td>{compra.productoName}</td>
+                                <td>{compra.cantidad}</td>
+                                <td>Bs {Number(compra.precio || 0).toFixed(2)}</td>
+                                <td>Bs {(compra.cantidad * Number(compra.precio || 0)).toFixed(2)}</td>
+                                <td>{formatFecha(compra.fecha)}</td>
+                                <td>{compra.clienteCompra?.nombre || `Cliente #${compra.clienteId}`}</td> {/* Nuevo campo */}
+                                <td className="d-flex justify-content-center align-items-center">
+                                <Button 
+                                    variant="info" 
+                                    onClick={() => editarCompra(compra.id)} 
+                                    className="me-2"
+                                >
+                                    <FiEdit /> Editar
+                                </Button>
+                                <Button 
+                                    variant="danger" 
+                                    onClick={() => {
+                                    setSelectedId(compra.id);
+                                    setShowModal(true);
+                                    }}
+                                >
+                                    <FiTrash2 /> Eliminar
+                                </Button>
+                                </td>
+                            </tr>
                             ))
                         )}
                     </tbody>
+
                 </Table>
             )}
 

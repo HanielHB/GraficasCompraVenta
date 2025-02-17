@@ -20,17 +20,39 @@ const FormCompra = ({ handleShowCompras }) => {
     const [productoName, setProductoName] = useState('');
     const [precio, setPrecio] = useState('');
     const [currentUser, setCurrentUser] = useState(null);
+    const [clientes, setClientes] = useState([]);
+    const [clienteId, setClienteId] = useState('');
     const [validated, setValidated] = useState(false);
     const [formValid, setFormValid] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [error, setError] = useState(null);
+    const [loadingClientes, setLoadingClientes] = useState(true);
 
     useEffect(() => {
-        // Obtener usuario logueado
         axios.get("http://localhost:3000/usuarios/me", {
             headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         })
         .then(res => setCurrentUser(res.data))
-        .catch(error => console.error("Error al obtener usuario:", error));
+        .catch(error => {
+            console.error("Error al obtener usuario:", error);
+            setError("Error al cargar datos del usuario");
+        });
+
+        axios.get("http://localhost:3000/usuarios?tipo=cliente", {
+            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        })
+        .then(res => {
+            setClientes(res.data);
+            setLoadingClientes(false);
+            if (res.data.length === 0) {
+                setError("No hay clientes registrados en el sistema");
+            }
+        })
+        .catch(error => {
+            console.error("Error al obtener clientes:", error);
+            setError("Error al cargar la lista de clientes");
+            setLoadingClientes(false);
+        });
 
         if (id) {
             getCompraById();
@@ -38,19 +60,10 @@ const FormCompra = ({ handleShowCompras }) => {
     }, [id]);
 
     useEffect(() => {
-        const validateForm = () => {
-            const isValid = Boolean(
-                cantidad > 0 &&
-                fecha &&
-                productoName.trim() &&
-                precio > 0 &&
-                currentUser?.id
-            );
-            setFormValid(isValid);
-        };
-        
-        validateForm();
-    }, [cantidad, fecha, productoName, precio, currentUser]);
+        setFormValid(
+            cantidad > 0 && fecha && productoName.trim() && precio > 0 && currentUser?.id && clienteId
+        );
+    }, [cantidad, fecha, productoName, precio, currentUser, clienteId]);
 
     const getCompraById = () => {
         axios.get(`http://localhost:3000/compras/${id}`, {
@@ -62,36 +75,29 @@ const FormCompra = ({ handleShowCompras }) => {
             setFecha(new Date(compra.fecha).toISOString().split('T')[0]);
             setProductoName(compra.productoName);
             setPrecio(compra.precio);
+            setClienteId(compra.clienteId);
         })
         .catch(error => {
             console.error("Error al obtener la compra:", error);
+            setError("Error al cargar los datos de la compra");
         });
     };
 
     const onGuardarClick = (e) => {
-        const form = e.currentTarget;
         e.preventDefault();
-        e.stopPropagation();
-
         setValidated(true);
-
-        if (!formValid || form.checkValidity() === false) {
-            return;
-        }
+        if (!formValid) return;
 
         const compraData = {
             cantidad: parseInt(cantidad),
             fecha: new Date(fecha).toISOString(),
             productoName: productoName,
             precio: parseFloat(precio),
-            usuarioId: currentUser.id
+            usuarioId: currentUser.id,
+            clienteId: clienteId
         };
 
-        if (id) {
-            editarCompra(compraData);
-        } else {
-            crearCompra(compraData);
-        }
+        id ? editarCompra(compraData) : crearCompra(compraData);
     };
 
     const editarCompra = (compraData) => {
@@ -99,9 +105,7 @@ const FormCompra = ({ handleShowCompras }) => {
             headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         })
         .then(() => setShowSuccessModal(true))
-        .catch(error => {
-            console.error("Error al editar la compra:", error.response?.data);
-        });
+        .catch(error => setError(error.response?.data?.msg || "Error al actualizar la compra"));
     };
 
     const crearCompra = (compraData) => {
@@ -109,9 +113,7 @@ const FormCompra = ({ handleShowCompras }) => {
             headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         })
         .then(() => setShowSuccessModal(true))
-        .catch(error => {
-            console.error("Error al crear la compra:", error.response?.data);
-        });
+        .catch(error => setError(error.response?.data?.msg || "Error al crear la compra"));
     };
 
     const handleCloseModal = () => {
@@ -171,6 +173,29 @@ const FormCompra = ({ handleShowCompras }) => {
                                     />
                                     <Form.Control.Feedback type="invalid">
                                         Seleccione una fecha
+                                    </Form.Control.Feedback>
+                                </Form.Group>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Cliente:</Form.Label>
+                                    {loadingClientes ? (
+                                        <p className="text-muted">Cargando lista de clientes...</p>
+                                    ) : (
+                                        <Form.Select
+                                            value={clienteId}
+                                            onChange={(e) => setClienteId(e.target.value)}
+                                            required
+                                            isInvalid={validated && !clienteId}
+                                        >
+                                            <option value="">Seleccione un cliente</option>
+                                            {clientes.map(cliente => (
+                                                <option key={cliente.id} value={cliente.id}>
+                                                    {cliente.nombre} {cliente.apellido}
+                                                </option>
+                                            ))}
+                                        </Form.Select>
+                                    )}
+                                    <Form.Control.Feedback type="invalid">
+                                        Seleccione un cliente
                                     </Form.Control.Feedback>
                                 </Form.Group>
 

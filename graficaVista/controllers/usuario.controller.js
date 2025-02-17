@@ -11,12 +11,18 @@ const SECRET_KEY = process.env.SECRET_KEY || "mi_secreto_super_seguro";
 // 1. Listar todos los usuarios
 exports.listUsuarios = async (req, res) => {
     try {
-        const usuarios = await db.usuario.findAll();
+        const whereCondition = {};
+        if (req.query.tipo) {
+            whereCondition.tipo = req.query.tipo;  // Filtra solo si "tipo" está en la consulta
+        }
+
+        const usuarios = await db.usuario.findAll({ where: whereCondition });
         res.json(usuarios);
     } catch (error) {
         sendError500(res, error);
     }
 };
+
 
 // 2. Obtener un usuario por ID
 exports.getUsuarioById = async (req, res) => {
