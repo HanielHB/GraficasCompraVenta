@@ -1,21 +1,20 @@
-// controllers/venta.controller.js
-
 const db = require("../models");
 const { isRequestValid, sendError500 } = require("../utils/request.utils");
 
 // 1. Listar todas las ventas
 exports.listVentas = async (req, res) => {
     try {
+        // Incluimos opcionalmente usuario (vendedor) y producto asociado
         const ventas = await db.venta.findAll({
             include: [
                 { 
                     model: db.usuario, 
-                    as: "vendedorVenta",
+                    as: "vendedorVenta",  // Alias para el vendedor
                     attributes: ["id", "nombre", "apellido", "tipo"] 
                 },
                 { 
                     model: db.usuario, 
-                    as: "clienteVenta",
+                    as: "clienteVenta",   // Alias para el cliente
                     attributes: ["id", "nombre", "apellido", "tipo"] 
                 }
             ]
@@ -31,7 +30,7 @@ exports.getVentaById = async (req, res) => {
     const id = req.params.id;
     try {
         const venta = await getVentaOr404(id, res);
-        if (!venta) return;
+        if (!venta) return; // La función ya maneja el 404
         res.json(venta);
     } catch (error) {
         sendError500(res, error);
@@ -39,34 +38,30 @@ exports.getVentaById = async (req, res) => {
 };
 
 // 3. Crear una nueva venta
+// 3. Crear una nueva venta
 exports.createVenta = async (req, res) => {
-    const requiredFields = ["usuarioId", "clienteId", "productoName", "cantidad", "fecha", "precio"];
+    const requiredFields = ["usuarioId", "clienteId", "productos", "fecha"];
     if (!isRequestValid(requiredFields, req.body, res)) return;
 
     try {
-        const { usuarioId, clienteId, productoName, cantidad, fecha, precio } = req.body;
-        
-        // Validar que el cliente sea de tipo 'cliente'
-        const cliente = await db.usuario.findByPk(clienteId);
-        if (!cliente || cliente.tipo !== "cliente") {
-            return res.status(400).json({ 
-                msg: "El cliente seleccionado no es válido" 
-            });
-        }
+        const { usuarioId, clienteId, productos, fecha } = req.body;
 
+        // Crear la venta con los productos como un arreglo de objetos JSON
         const nuevaVenta = await db.venta.create({
             usuarioId,
             clienteId,
-            productoName,
-            cantidad,
             fecha,
-            precio
+            productos: productos  // Los productos son directamente un array de objetos
         });
+
         res.status(201).json(nuevaVenta);
     } catch (error) {
         sendError500(res, error);
     }
 };
+
+
+
 
 // 4. Actualizar una venta
 // 4. Actualizar una venta
@@ -76,22 +71,12 @@ exports.updateVenta = async (req, res) => {
         const venta = await getVentaOr404(id, res);
         if (!venta) return;
 
-        // Validar nuevo cliente si se actualiza
-        if (req.body.clienteId) {
-            const cliente = await db.usuario.findByPk(req.body.clienteId);
-            if (!cliente || cliente.tipo !== "cliente") {
-                return res.status(400).json({ 
-                    msg: "El cliente seleccionado no es válido" 
-                });
-            }
-            venta.clienteId = req.body.clienteId;
-        }
-
-        // Resto de campos
+        if (req.body.usuarioId) venta.usuarioId = req.body.usuarioId;
+        if (req.body.clienteId) venta.clienteId = req.body.clienteId;
         if (req.body.productoName) venta.productoName = req.body.productoName;
         if (req.body.cantidad) venta.cantidad = req.body.cantidad;
         if (req.body.fecha) venta.fecha = req.body.fecha;
-        if (req.body.precio) venta.precio = req.body.precio;
+        if (req.body.precio) venta.precio = req.body.precio; // Actualizar el precio
 
         await venta.save();
         res.json(venta);
@@ -118,8 +103,8 @@ exports.deleteVenta = async (req, res) => {
 async function getVentaOr404(id, res) {
     const venta = await db.venta.findByPk(id, {
         include: [
-            { model: db.usuario, as: "vendedorVenta" },
-            { model: db.usuario, as: "clienteVenta" }
+            { model: db.usuario, as: "vendedorVenta" }
+            
         ]
     });
     if (!venta) {

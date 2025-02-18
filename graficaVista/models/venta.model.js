@@ -1,3 +1,4 @@
+// models/venta.js
 module.exports = (sequelize, Sequelize) => {
     const Venta = sequelize.define("venta", {
         cantidad: {
@@ -12,24 +13,26 @@ module.exports = (sequelize, Sequelize) => {
             type: Sequelize.STRING,
             allowNull: false
         },
-        // Precio del producto
         precio: {
-            type: Sequelize.DECIMAL(10, 2),  // DECIMAL con 10 dígitos en total y 2 decimales
-            allowNull: false  // Hacerlo obligatorio si lo necesitas
+            type: Sequelize.DECIMAL(10, 2),
+            allowNull: false
         },
-        // Clave foránea para relacionar con el usuario que realiza la venta
         usuarioId: {
             type: Sequelize.INTEGER,
             allowNull: false
         },
-        // Cliente (usuario de tipo 'cliente')
         clienteId: {
             type: Sequelize.INTEGER,
             allowNull: false,
             references: {
-                model: 'usuarios', // Misma tabla de usuarios
+                model: 'usuarios',
                 key: 'id'
             }
+        },
+        // Este campo es para almacenar los productos de la venta como un arreglo JSON
+        productos: {
+            type: Sequelize.JSON,
+            allowNull: false
         }
     }, {
         timestamps: true,
