@@ -123,12 +123,21 @@ exports.login = async (req, res) => {
         }
 
         // Generar token JWT (expira en 1 hora)
-        const token = jwt.sign({ id: usuario.id, tipo: usuario.tipo }, SECRET_KEY, { expiresIn: "1h" });
+        const token = jwt.sign(
+            { 
+                id: usuario.id, 
+                tipo: usuario.tipo, 
+                nombre: usuario.nombre, 
+                apellido: usuario.apellido 
+            }, 
+            SECRET_KEY, 
+            { expiresIn: "2h" }
+        );
 
         // ✅ Enviar también el usuarioId en la respuesta
         res.json({ 
             token, 
-            usuario: { id: usuario.id, email: usuario.email, tipo: usuario.tipo } 
+            usuario: { id: usuario.id, email: usuario.email, tipo: usuario.tipo , nombre: usuario.nombre , apellido: usuario.apellido} 
         });
 
     } catch (error) {

@@ -8,6 +8,7 @@ import FormCompra from "../compra/FormCompra"; // Importar FormCompra
 import ListVenta from "../venta/ListVenta";
 import FormVenta from "../venta/FormVenta";
 import VentasGrafico from "../venta/VentasGrafico"; // Importar el gráfico de ventas
+import ComprasGrafico from "../compra/ComprasGrafico"; 
 
 import "./Dashboard.css"; 
 import { FiHome, FiUsers, FiDollarSign, FiLogOut, FiChevronLeft, FiChevronRight,FiPackage,FiShoppingCart   } from "react-icons/fi";
@@ -34,8 +35,14 @@ const Dashboard = () => {
     const [selectedVentaId, setSelectedVentaId] = useState(null);
 
     const [showVentasGraf, setShowVentasGraf] = useState(false);  // Estado para ventas
+    const [showComprasGraf, setShowComprasGraf] = useState(false); // Nuevo estado para compras gráficas
+
 
     const [ventas, setVentas] = useState([]); // Estado para almacenar las ventas
+    const [compras, setCompras] = useState([]); // Estado para almacenar las ventas
+
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     const navigate = useNavigate();
 
@@ -48,6 +55,7 @@ const Dashboard = () => {
     useEffect(() => {
         verificarRol();
         fetchVentas();
+        fetchCompras(); // Llamar la función para cargar las compras
         document.title = "Dashboard";
     
         
@@ -86,10 +94,11 @@ const Dashboard = () => {
     
                 if (rolRes.data.tipo === "admin") {
                     setIsAdmin(true);
-                } else if (rolRes.data.tipo === "vendedor") {
-                    setIsVendedor(true);
-                    setShowUsuarios(false); // No mostrar ListUsuario si es vendedor
-                    navigate('/dashboard/ventas/grafico'); // Redirigir a ventas gráficos si es vendedor
+                } else if (rolRes.data.tipo === "vendedor" || rolRes.data.tipo === "cliente") {
+                    setIsVendedor(true); // También activamos esto para clientes
+                    setShowUsuarios(false);
+                    setShowVentasGraf(true);
+                    navigate('/dashboard/ventas/grafico');
                 }
             })
             .catch(() => {
@@ -103,8 +112,6 @@ const Dashboard = () => {
         });
     };
     
-    
-
     const fetchVentas = () => {
         const token = localStorage.getItem("token"); // Asegúrate de obtener el token desde localStorage
         if (!token) {
@@ -124,8 +131,33 @@ const Dashboard = () => {
         });
     };
 
+    const fetchCompras = () => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            alert("Token no disponible. Redirigiendo a login.");
+            navigate("/login");
+            return;
+        }
+    
+        setIsLoading(true);
+        axios.get("http://localhost:3000/compras", {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+        .then(response => {
+            setCompras(response.data);
+            setIsLoading(false);
+        })
+        .catch(error => {
+            console.error("Error al cargar las compras:", error);
+            setError("Hubo un problema al cargar las compras.");
+            setIsLoading(false);
+        });
+    };
+    
+
     const handleShowUsuarios = () => {
         setShowUsuarios(true);
+        setShowComprasGraf(false);
         setShowProductos(false);
         setShowFormProduct(false);
         setShowCompras(false);
@@ -141,6 +173,7 @@ const Dashboard = () => {
 
     const handleShowForm = (id = null) => {
         setShowUsuarios(false);
+        setShowComprasGraf(false);
         setShowForm(true);
         setShowProductos(false);
         setShowVentas(false);
@@ -152,6 +185,7 @@ const Dashboard = () => {
     
     const handleShowCompras = () => {
         setShowCompras(true);
+        setShowComprasGraf(false);
         setShowUsuarios(false);
         setShowFormCompra(false);
         setShowProductos(false);
@@ -167,6 +201,7 @@ const Dashboard = () => {
     // Handler para mostrar formulario de compras
     const handleShowFormCompra = (id = null) => {
         setShowFormCompra(true);
+        setShowComprasGraf(false);
         setShowUsuarios(false);
         setShowCompras(false);
         setShowProductos(false);
@@ -180,6 +215,7 @@ const Dashboard = () => {
 
     const handleShowVentas = () => {
         setShowVentas(true);
+        setShowComprasGraf(false);
         setShowUsuarios(false);
         setShowProductos(false);
         setShowCompras(false);
@@ -194,6 +230,7 @@ const Dashboard = () => {
     
     const handleShowFormVenta = (id = null) => {
         setShowVentas(false);
+        setShowComprasGraf(false);
         setShowFormVenta(true);
         setShowUsuarios(false);
         setShowProductos(false);
@@ -208,6 +245,7 @@ const Dashboard = () => {
 
     const handleShowVentasGraf = () => {
         setShowVentasGraf(true);
+        setShowComprasGraf(false);
         setShowVentas(false);
         setShowUsuarios(false);
         setShowProductos(false);
@@ -219,6 +257,22 @@ const Dashboard = () => {
         setSelectedVentaId(null);
         navigate('/dashboard/ventas/grafico');
     };
+
+    const handleShowComprasGraf = () => {
+        setShowComprasGraf(true);
+        setShowVentasGraf(false); // Asegurar que la gráfica de ventas no esté activa
+        setShowVentas(false);
+        setShowUsuarios(false);
+        setShowCompras(false);
+        setShowForm(false);
+        setShowFormVenta(false);
+        setShowFormCompra(false);
+        setShowFormProduct(false);
+        setSelectedCompraId(null);
+        navigate('/dashboard/compras/grafico'); // Asegurar la navegación correcta
+    };
+    
+    
     
 
     return (
@@ -287,10 +341,20 @@ const Dashboard = () => {
                                 <FiDollarSign className="menu-icon" />
                                 {!sidebarCollapsed && "Ventas Graficos"}
                             </Button>
+
+                            <Button 
+                                variant="link" 
+                                className="menu-item"
+                                onClick={handleShowComprasGraf}
+                            >
+                                <FiShoppingCart className="menu-icon" />
+                                {!sidebarCollapsed && "Compras Graficos"}
+                            </Button>
+
                         </> 
                     )}
 
-                    {isVendedor && (
+                    {(isVendedor || userData.tipo === "cliente") && (
                         <>
                             <Button 
                                 variant="link" 
@@ -317,6 +381,17 @@ const Dashboard = () => {
                                 <FiDollarSign className="menu-icon" />
                                 {!sidebarCollapsed && "Ventas Graficos"}
                             </Button>
+
+                            {/* Botón para mostrar gráficos de compras */}
+                            <Button 
+                                variant="link" 
+                                className="menu-item"
+                                onClick={handleShowComprasGraf}
+                            >
+                                <FiShoppingCart className="menu-icon" />
+                                {!sidebarCollapsed && "Compras Gráficos"}
+                            </Button>
+
                         </>
                         
                     )}
@@ -327,7 +402,7 @@ const Dashboard = () => {
                             className="menu-item" 
                             onClick={() => {
                                 localStorage.removeItem("token");
-                                navigate("/login");
+                                navigate("/");
                             }}
                         >
                             <FiLogOut className="menu-icon" />
@@ -387,6 +462,11 @@ const Dashboard = () => {
                                 handleShowVentas={handleShowVentas}
                             />
                         )}
+                        {/* Componente VentasGrafico */}
+                        {showComprasGraf && (
+                            <ComprasGrafico compras={compras} />
+                        )}
+
 
                     </Col>
                 </Row>

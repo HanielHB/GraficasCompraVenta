@@ -4,7 +4,9 @@ const SECRET_KEY = process.env.SECRET_KEY || "mi_secreto_super_seguro";
 // Middleware base: Verificar token y extraer datos del usuario
 exports.verifyToken = (req, res, next) => {
     const token = req.headers['authorization'];
-    
+
+    console.log("Token recibido:", token); // <-- Agregar para verificar si el token llega
+
     if (!token) {
         return res.status(403).json({ msg: "No se proporcionó un token" });
     }
@@ -17,6 +19,9 @@ exports.verifyToken = (req, res, next) => {
             nombre: decoded.nombre,
             apellido: decoded.apellido
         };
+
+        console.log("Usuario autenticado:", req.user); // <-- Agregar para verificar si req.user se está creando
+
         next();
     } catch (error) {
         console.error("Error verificando el token:", error.message);

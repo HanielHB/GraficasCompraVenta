@@ -1,43 +1,29 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { 
-    Button,
-    Container,
-    Row,
-    Col,
-    Card,
-    Form,
-    Modal
-} from 'react-bootstrap';
+import { Button, Container, Row, Col, Card, Form, Modal, Table } from 'react-bootstrap';
 
-const FormCompra = ({ handleShowCompras }) => { 
+const FormCompra = ({ handleShowCompras }) => {
     const navigate = useNavigate();
     const { id } = useParams();
     
-    const [cantidad, setCantidad] = useState('');
-    const [fecha, setFecha] = useState('');
+    const [productos, setProductos] = useState([]);
     const [productoName, setProductoName] = useState('');
-    const [precio, setPrecio] = useState('');
-    const [currentUser, setCurrentUser] = useState(null);
+    const [cantidad, setCantidad] = useState('');
+    const [productosSeleccionados, setProductosSeleccionados] = useState([]);
+    const [fecha, setFecha] = useState('');
     const [clientes, setClientes] = useState([]);
     const [clienteId, setClienteId] = useState('');
     const [validated, setValidated] = useState(false);
     const [formValid, setFormValid] = useState(false);
+    const [precio, setPrecio] = useState('');
+
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [error, setError] = useState(null);
     const [loadingClientes, setLoadingClientes] = useState(true);
-
+    
     useEffect(() => {
-        axios.get("http://localhost:3000/usuarios/me", {
-            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        })
-        .then(res => setCurrentUser(res.data))
-        .catch(error => {
-            console.error("Error al obtener usuario:", error);
-            setError("Error al cargar datos del usuario");
-        });
-
+        // Cargar clientes
         axios.get("http://localhost:3000/usuarios?tipo=cliente", {
             headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         })
@@ -53,219 +39,193 @@ const FormCompra = ({ handleShowCompras }) => {
             setError("Error al cargar la lista de clientes");
             setLoadingClientes(false);
         });
+        
+       if (id) {
+    axios.get(`http://localhost:3000/compras/${id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    }).then(res => {
+        const fechaFormateada = res.data.fecha.split("T")[0];
+        setFecha(fechaFormateada);
+        setClienteId(res.data.clienteId);
+        
+        const productosParseados = typeof res.data.productos === "string" 
+            ? JSON.parse(res.data.productos) 
+            : res.data.productos;
 
-        if (id) {
-            getCompraById();
-        }
+        const productosConNombreCorrecto = productosParseados.map(p => ({
+            productoName: p.nombre,
+            cantidad: p.cantidad,
+            precio: p.precio
+        }));
+
+        setProductosSeleccionados(productosConNombreCorrecto);
+    }).catch(error => {
+        console.error("Error al obtener la compra:", error);
+    });
+}
     }, [id]);
-
-    useEffect(() => {
-        setFormValid(
-            cantidad > 0 && fecha && productoName.trim() && precio > 0 && currentUser?.id && clienteId
-        );
-    }, [cantidad, fecha, productoName, precio, currentUser, clienteId]);
-
-    const getCompraById = () => {
-        axios.get(`http://localhost:3000/compras/${id}`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        })
-        .then(res => {
-            const compra = res.data;
-            setCantidad(compra.cantidad);
-            setFecha(new Date(compra.fecha).toISOString().split('T')[0]);
-            setProductoName(compra.productoName);
-            setPrecio(compra.precio);
-            setClienteId(compra.clienteId);
-        })
-        .catch(error => {
-            console.error("Error al obtener la compra:", error);
-            setError("Error al cargar los datos de la compra");
-        });
+    
+    const agregarProducto = () => {
+        if (!productoName || !cantidad || !precio) return;
+    
+        setProductosSeleccionados([...productosSeleccionados, { 
+            productoName: productoName,
+            cantidad: parseInt(cantidad),
+            precio: parseFloat(precio)
+        }]);
+    
+        setProductoName('');
+        setCantidad('');
+        setPrecio('');
     };
-
+    
+    const eliminarProducto = (index) => {
+        const nuevosProductos = productosSeleccionados.filter((_, i) => i !== index);
+        setProductosSeleccionados(nuevosProductos);
+    };
+    
     const onGuardarClick = (e) => {
         e.preventDefault();
-        setValidated(true);
-        if (!formValid) return;
-
+    
+        const usuarioId = localStorage.getItem("usuarioId");
+    
+        if (!usuarioId) {
+            console.error("Error: usuarioId no está definido en localStorage");
+            setError("Hubo un problema con la sesión, intenta iniciar sesión de nuevo.");
+            return;
+        }
+    
+        if (!productosSeleccionados.length) {
+            setError("Debe agregar al menos un producto.");
+            return;
+        }
+    
+        if (!clienteId) {
+            setError("Debe seleccionar un cliente.");
+            return;
+        }
+    
         const compraData = {
-            cantidad: parseInt(cantidad),
-            fecha: new Date(fecha).toISOString(),
-            productoName: productoName,
-            precio: parseFloat(precio),
-            usuarioId: currentUser.id,
-            clienteId: clienteId
+            usuarioId,
+            fecha,
+            clienteId,
+            productos: JSON.stringify(productosSeleccionados.map(producto => ({
+                nombre: producto.productoName,
+                cantidad: producto.cantidad,
+                precio: producto.precio
+            })))
         };
+        
+        console.log("Datos enviados:", JSON.stringify(compraData, null, 2));
+    
+        const request = id 
+            ? axios.put(`http://localhost:3000/compras/${id}`, compraData, {
+                headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+            })
+            : axios.post("http://localhost:3000/compras", compraData, {
+                headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+            });
 
-        id ? editarCompra(compraData) : crearCompra(compraData);
+        request
+            .then(() => setShowSuccessModal(true))
+            .catch(error => {
+                console.error("Error al guardar la compra:", error);
+                setError("Error al guardar la compra");
+            });
+    };
+    
+    const calcularTotal = () => {
+        return productosSeleccionados.reduce((total, producto) => total + (producto.cantidad * producto.precio), 0).toFixed(2);
     };
 
-    const editarCompra = (compraData) => {
-        axios.put(`http://localhost:3000/compras/${id}`, compraData, {
-            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        })
-        .then(() => setShowSuccessModal(true))
-        .catch(error => setError(error.response?.data?.msg || "Error al actualizar la compra"));
-    };
-
-    const crearCompra = (compraData) => {
-        axios.post(`http://localhost:3000/compras`, compraData, {
-            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        })
-        .then(() => setShowSuccessModal(true))
-        .catch(error => setError(error.response?.data?.msg || "Error al crear la compra"));
-    };
-
-    const handleCloseModal = () => {
-        setShowSuccessModal(false);
-        handleShowCompras();
-    };
 
     return (
         <Container>
             <Row className="mt-5 justify-content-center">
-                <Col md={6}>
+                <Col md={8}>
                     <Card>
                         <Card.Body>
-                            <Card.Title>
-                                <h2>{id ? "Editar Compra" : "Crear Compra"}</h2>
-                            </Card.Title>
-                            <Form noValidate validated={validated} onSubmit={onGuardarClick}>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Cantidad:</Form.Label>
-                                    <Form.Control
-                                        required
-                                        type="number"
-                                        min="1"
-                                        value={cantidad}
-                                        onChange={(e) => setCantidad(e.target.value)}
-                                        isInvalid={validated && !cantidad}
-                                    />
-                                    <Form.Control.Feedback type="invalid">
-                                        Ingrese una cantidad válida
-                                    </Form.Control.Feedback>
-                                </Form.Group>
-
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Precio Unitario:</Form.Label>
-                                    <Form.Control
-                                        required
-                                        type="number"
-                                        step="0.01"
-                                        min="0.01"
-                                        value={precio}
-                                        onChange={(e) => setPrecio(e.target.value)}
-                                        isInvalid={validated && (!precio || precio <= 0)}
-                                    />
-                                    <Form.Control.Feedback type="invalid">
-                                        Ingrese un precio válido (mayor a 0)
-                                    </Form.Control.Feedback>
-                                </Form.Group>
-
+                            <h2>{id ? "Editar Compra" : "Crear Compra"}</h2>
+                            <Form onSubmit={onGuardarClick}>
                                 <Form.Group className="mb-3">
                                     <Form.Label>Fecha:</Form.Label>
-                                    <Form.Control
-                                        required
-                                        type="date"
-                                        value={fecha}
-                                        onChange={(e) => setFecha(e.target.value)}
-                                        isInvalid={validated && !fecha}
-                                    />
-                                    <Form.Control.Feedback type="invalid">
-                                        Seleccione una fecha
-                                    </Form.Control.Feedback>
+                                    <Form.Control type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
                                 </Form.Group>
+
                                 <Form.Group className="mb-3">
-                                    <Form.Label>Cliente:</Form.Label>
-                                    {loadingClientes ? (
-                                        <p className="text-muted">Cargando lista de clientes...</p>
-                                    ) : (
-                                        <Form.Select
-                                            value={clienteId}
-                                            onChange={(e) => setClienteId(e.target.value)}
-                                            required
-                                            isInvalid={validated && !clienteId}
-                                        >
-                                            <option value="">Seleccione un cliente</option>
-                                            {clientes.map(cliente => (
-                                                <option key={cliente.id} value={cliente.id}>
-                                                    {cliente.nombre} {cliente.apellido}
-                                                </option>
-                                            ))}
-                                        </Form.Select>
-                                    )}
-                                    <Form.Control.Feedback type="invalid">
-                                        Seleccione un cliente
-                                    </Form.Control.Feedback>
-                                </Form.Group>
+                                   <Form.Label>Cliente:</Form.Label>
+                                   <Form.Select
+                                       value={clienteId}
+                                       onChange={(e) => setClienteId(e.target.value)}
+                                       required
+                                       isInvalid={validated && !clienteId}
+                                       disabled={clientes.length === 0}
+                                   >
+                                       <option value="">Seleccione un cliente</option>
+                                       {clientes.map(cliente => (
+                                           <option key={cliente.id} value={cliente.id}>
+                                               {cliente.nombre} {cliente.apellido}
+                                           </option>
+                                       ))}
+                                   </Form.Select>
+                               </Form.Group>
 
                                 <Form.Group className="mb-3">
                                     <Form.Label>Producto:</Form.Label>
-                                    <Form.Control
-                                        required
-                                        value={productoName}
-                                        onChange={(e) => setProductoName(e.target.value)}
-                                        isInvalid={validated && !productoName}
-                                    />
-                                    <Form.Control.Feedback type="invalid">
-                                        Ingrese un producto
-                                    </Form.Control.Feedback>
+                                    <Form.Control value={productoName} onChange={(e) => setProductoName(e.target.value)} />
                                 </Form.Group>
-
                                 <Form.Group className="mb-3">
-                                    <Form.Label>Usuario:</Form.Label>
-                                    <Form.Control
-                                        type="text"
-                                        value={currentUser ? 
-                                            `${currentUser.nombre} ${currentUser.apellido}` 
-                                            : "Cargando usuario..."
-                                        }
-                                        readOnly
-                                    />
-                                    <small className="text-muted">
-                                        (Usuario actual - no editable)
-                                    </small>
+                                    <Form.Label>Precio Unitario:</Form.Label>
+                                    <Form.Control type="number" min="0" step="0.01" value={precio} onChange={(e) => setPrecio(e.target.value)} />
+                                </Form.Group>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Cantidad:</Form.Label>
+                                    <Form.Control type="number" min="1" value={cantidad} onChange={(e) => setCantidad(e.target.value)} />
                                 </Form.Group>
 
-                                <div className="d-grid gap-2">
-                                    <Button 
-                                        variant="primary" 
-                                        type="submit"
-                                        disabled={!formValid}
-                                    >
-                                        Guardar
-                                    </Button>
-                                    
-                                    <Button 
-                                        variant="secondary" 
-                                        onClick={handleShowCompras}
-                                    >
-                                        Volver a la lista
-                                    </Button>
-                                </div>
+                                <Button variant="primary" onClick={agregarProducto} className="mb-3">Agregar Producto</Button>
+
+                                <Table striped bordered>
+                                    <thead>
+                                        <tr>
+                                            <th>Producto</th>
+                                            <th>Cantidad</th>
+                                            <th>Precio Unitario</th>
+                                            <th>Sub Total</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {productosSeleccionados.map((p, index) => (
+                                            <tr key={index}>
+                                                <td>{p.productoName}</td>
+                                                <td>{p.cantidad}</td>
+                                                <td>Bs {p.precio.toFixed(2)}</td>
+                                                <td>Bs {(p.cantidad * p.precio).toFixed(2)}</td>
+                                                <td><Button variant="danger" onClick={() => eliminarProducto(index)}>Eliminar</Button></td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </Table>
+
+                                <h4 className="text-end">Total: Bs {calcularTotal()}</h4>
+                                <Button variant="success" type="submit">Guardar Compra</Button>
                             </Form>
                         </Card.Body>
                     </Card>
                 </Col>
             </Row>
 
-            <Modal show={showSuccessModal} onHide={handleCloseModal}>
+            <Modal show={showSuccessModal} onHide={() => setShowSuccessModal(false)}>
                 <Modal.Header closeButton>
-                    <Modal.Title>✅ Operación exitosa</Modal.Title>
+                    <Modal.Title>Compra Guardada</Modal.Title>
                 </Modal.Header>
-                <Modal.Body>
-                    {id 
-                        ? "¡Compra actualizada exitosamente!"
-                        : "¡Compra creada exitosamente!"}
-                </Modal.Body>
+                <Modal.Body>¡Compra registrada con éxito!</Modal.Body>
                 <Modal.Footer>
-                    <Button variant="primary" onClick={handleCloseModal}>
-                        Aceptar
-                    </Button>
+                    <Button variant="primary" onClick={() => handleShowCompras()}>Aceptar</Button>
                 </Modal.Footer>
             </Modal>
         </Container>
     );
 };
-
 export default FormCompra;

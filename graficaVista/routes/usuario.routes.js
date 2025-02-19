@@ -1,4 +1,4 @@
-const { verifyToken, isAdmin, isVendedor } = require("../middlewares/auth.middleware");
+const { verifyToken, isAdmin, isVendedor, isAdminOrVendedor } = require("../middlewares/auth.middleware");
 
 module.exports = app => {
     const router = require("express").Router();
@@ -17,7 +17,7 @@ module.exports = app => {
     
     // Rutas protegidas para administrar usuarios
     // Solo un ADMIN puede listar, obtener, crear, actualizar y eliminar usuarios
-    router.get('/', [verifyToken], controller.listUsuarios);
+    router.get('/', [verifyToken, isAdminOrVendedor], controller.listUsuarios);
     router.get('/:id', [verifyToken], controller.getUsuarioById);
     router.post('/', [verifyToken, isAdmin], controller.createUsuario);
     router.put('/:id', [verifyToken, isAdmin], controller.updateUsuario);

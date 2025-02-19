@@ -17,6 +17,7 @@ import FormCompra from './pages/compra/FormCompra.jsx';
 import ListVenta from './pages/venta/ListVenta.jsx';
 import FormVenta from './pages/venta/FormVenta.jsx';
 import VentasGrafico from './pages/venta/VentasGrafico.jsx';
+import ComprasGrafico from './pages/compra/ComprasGrafico.jsx';
 
 const router = createBrowserRouter([
   {
@@ -79,6 +80,10 @@ const router = createBrowserRouter([
 {
   path: "/dashboard/ventas/grafico",
   element: <Dashboard><VentasGrafico /></Dashboard>
+},
+{
+  path: "/dashboard/compras/grafico",
+  element: <Dashboard><ComprasGrafico /></Dashboard>
 },
 ]);
 

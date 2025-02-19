@@ -49,33 +49,33 @@ const FormVenta = ({ handleShowVentas }) => {
             setLoadingClientes(false);
         });
         
-        if (id) {
-            axios.get(`http://localhost:3000/ventas/${id}`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-            }).then(res => {
-                // Extraer solo la parte de la fecha (YYYY-MM-DD)
-                const fechaFormateada = res.data.fecha.split("T")[0]; // Si viene en formato ISO
-                // Si viene en otro formato, usa: res.data.fecha.substring(0, 10);
+       if (id) {
+    axios.get(`http://localhost:3000/ventas/${id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    }).then(res => {
+        // Extraer solo la parte de la fecha (YYYY-MM-DD)
+        const fechaFormateada = res.data.fecha.split("T")[0]; // Si viene en formato ISO
+        // Si viene en otro formato, usa: res.data.fecha.substring(0, 10);
+
+        setFecha(fechaFormateada);
+        setClienteId(res.data.clienteId);
         
-                setFecha(fechaFormateada);
-                setClienteId(res.data.clienteId);
-                
-                const productosParseados = typeof res.data.productos === "string" 
-                    ? JSON.parse(res.data.productos) 
-                    : res.data.productos;
-        
-                const productosConNombreCorrecto = productosParseados.map(p => ({
-                    productoName: p.nombre,
-                    cantidad: p.cantidad,
-                    precio: p.precio
-                }));
-        
-                setProductosSeleccionados(productosConNombreCorrecto);
-            }).catch(error => {
-                console.error("Error al obtener la venta:", error);
-            });
-        }
-        
+        const productosParseados = typeof res.data.productos === "string" 
+            ? JSON.parse(res.data.productos) 
+            : res.data.productos;
+
+        const productosConNombreCorrecto = productosParseados.map(p => ({
+            productoName: p.nombre,
+            cantidad: p.cantidad,
+            precio: p.precio
+        }));
+
+        setProductosSeleccionados(productosConNombreCorrecto);
+    }).catch(error => {
+        console.error("Error al obtener la venta:", error);
+    });
+}
+
         
     }, [id]);
     
@@ -123,12 +123,13 @@ const FormVenta = ({ handleShowVentas }) => {
             usuarioId,
             fecha,
             clienteId,
-            productos: productosSeleccionados.map(producto => ({
+            productos: JSON.stringify(productosSeleccionados.map(producto => ({
                 nombre: producto.productoName,
                 cantidad: producto.cantidad,
                 precio: producto.precio
-            }))
+            })))
         };
+        
     
         console.log("Datos enviados:", JSON.stringify(ventaData, null, 2));
     

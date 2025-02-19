@@ -4,29 +4,66 @@ const { isRequestValid, sendError500 } = require("../utils/request.utils");
 // 1. Listar todas las ventas
 exports.listVentas = async (req, res) => {
     try {
-        // Incluimos opcionalmente usuario (vendedor) y producto asociado
+        console.log("Usuario en listVentas:", req.user); // 🔍 Verificar en consola
+
+        // Validar que el usuario exista
+        if (!req.user) {
+            return res.status(401).json({ error: "Usuario no autenticado" });
+        }
+
+        // Obtener el tipo y ID del usuario logeado desde el token
+        const usuarioId = req.user.id;  // ✅ Corregido: usar req.user
+        const tipoUsuario = req.user.tipo;  // ✅ Corregido: usar req.user
+
+        // Si es admin, traemos todas las ventas
+        if (tipoUsuario === 'admin') {
+            const ventas = await db.venta.findAll({
+                include: [
+                    { 
+                        model: db.usuario, 
+                        as: "vendedorVenta",
+                        attributes: ["id", "nombre", "apellido", "tipo"] 
+                    },
+                    { 
+                        model: db.usuario, 
+                        as: "clienteVenta",
+                        attributes: ["id", "nombre", "apellido", "tipo"] 
+                    }
+                ]
+            });
+            return res.json(ventas);
+        }
+
+        // Si es vendedor, solo devolver las ventas realizadas por el vendedor logeado
         const ventas = await db.venta.findAll({
+            where: {
+                usuarioId: usuarioId  // ✅ Filtrar por ventas del vendedor logeado
+            },
             include: [
                 { 
                     model: db.usuario, 
-                    as: "vendedorVenta",  // Alias para el vendedor
+                    as: "vendedorVenta",
                     attributes: ["id", "nombre", "apellido", "tipo"] 
                 },
                 { 
                     model: db.usuario, 
-                    as: "clienteVenta",   // Alias para el cliente
+                    as: "clienteVenta",
                     attributes: ["id", "nombre", "apellido", "tipo"] 
                 }
             ]
         });
-        res.json(ventas);
+
+        return res.json(ventas);
+
     } catch (error) {
+        console.error("Error en listVentas:", error);
         sendError500(res, error);
     }
 };
 
-// 2. Obtener una venta por ID
-// 2. Obtener una venta por ID
+
+
+
 exports.getVentaById = async (req, res) => {
     const id = req.params.id;
     try {
