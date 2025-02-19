@@ -32,7 +32,7 @@ const FormVenta = ({ handleShowVentas }) => {
     const [loadingClientes, setLoadingClientes] = useState(true);
     
     useEffect(() => {
-        
+        // Cargar clientes
         axios.get("http://localhost:3000/usuarios?tipo=cliente", {
             headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         })
@@ -53,19 +53,37 @@ const FormVenta = ({ handleShowVentas }) => {
             axios.get(`http://localhost:3000/ventas/${id}`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
             }).then(res => {
-                setFecha(res.data.fecha);
+                // Extraer solo la parte de la fecha (YYYY-MM-DD)
+                const fechaFormateada = res.data.fecha.split("T")[0]; // Si viene en formato ISO
+                // Si viene en otro formato, usa: res.data.fecha.substring(0, 10);
+        
+                setFecha(fechaFormateada);
                 setClienteId(res.data.clienteId);
-                setProductosSeleccionados(res.data.productos);
+                
+                const productosParseados = typeof res.data.productos === "string" 
+                    ? JSON.parse(res.data.productos) 
+                    : res.data.productos;
+        
+                const productosConNombreCorrecto = productosParseados.map(p => ({
+                    productoName: p.nombre,
+                    cantidad: p.cantidad,
+                    precio: p.precio
+                }));
+        
+                setProductosSeleccionados(productosConNombreCorrecto);
+            }).catch(error => {
+                console.error("Error al obtener la venta:", error);
             });
         }
+        
+        
     }, [id]);
     
     const agregarProducto = () => {
-        // Evitar agregar si los campos están vacíos
         if (!productoName || !cantidad || !precio) return;
     
         setProductosSeleccionados([...productosSeleccionados, { 
-            nombre: productoName,
+            productoName: productoName,
             cantidad: parseInt(cantidad),
             precio: parseFloat(precio)
         }]);
@@ -75,11 +93,22 @@ const FormVenta = ({ handleShowVentas }) => {
         setPrecio('');
     };
     
+    const eliminarProducto = (index) => {
+        const nuevosProductos = productosSeleccionados.filter((_, i) => i !== index);
+        setProductosSeleccionados(nuevosProductos);
+    };
     
     const onGuardarClick = (e) => {
         e.preventDefault();
     
-        // Validar si los productos están seleccionados y si el cliente está seleccionado
+        const usuarioId = localStorage.getItem("usuarioId");
+    
+        if (!usuarioId) {
+            console.error("Error: usuarioId no está definido en localStorage");
+            setError("Hubo un problema con la sesión, intenta iniciar sesión de nuevo.");
+            return;
+        }
+    
         if (!productosSeleccionados.length) {
             setError("Debe agregar al menos un producto.");
             return;
@@ -91,36 +120,38 @@ const FormVenta = ({ handleShowVentas }) => {
         }
     
         const ventaData = {
+            usuarioId,
             fecha,
             clienteId,
             productos: productosSeleccionados.map(producto => ({
-                nombre: producto.nombre,
+                nombre: producto.productoName,
                 cantidad: producto.cantidad,
                 precio: producto.precio
             }))
         };
-        
     
-        if (id) {
-            // Actualizar venta existente
-            axios.put(`http://localhost:3000/ventas/${id}`, ventaData, {
-                headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-            }).then(() => setShowSuccessModal(true))
-              .catch(error => setError("Error al guardar la venta"));
-        } else {
-            // Crear nueva venta
-            axios.post("http://localhost:3000/ventas", ventaData, {
+        console.log("Datos enviados:", JSON.stringify(ventaData, null, 2));
+    
+        // Si estamos editando, hacemos PUT en lugar de POST
+        const request = id 
+            ? axios.put(`http://localhost:3000/ventas/${id}`, ventaData, {
                 headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
             })
-            
+            : axios.post("http://localhost:3000/ventas", ventaData, {
+                headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+            });
+
+        request
             .then(() => setShowSuccessModal(true))
-            
             .catch(error => {
                 console.error("Error al guardar la venta:", error);
                 setError("Error al guardar la venta");
             });
-            
-        }
+    };
+    
+    // Calcular el total de todos los productos
+    const calcularTotal = () => {
+        return productosSeleccionados.reduce((total, producto) => total + (producto.cantidad * producto.precio), 0).toFixed(2);
     };
 
     return (
@@ -146,27 +177,20 @@ const FormVenta = ({ handleShowVentas }) => {
                                            Cargando lista de clientes...
                                        </Form.Control>
                                    ) : (
-                                       <>
-                                           <Form.Select
-                                               value={clienteId}
-                                               onChange={(e) => setClienteId(e.target.value)}
-                                               required
-                                               isInvalid={validated && !clienteId}
-                                               disabled={clientes.length === 0}
-                                           >
-                                               <option value="">Seleccione un cliente</option>
-                                               {clientes.map(cliente => (
-                                                   <option key={cliente.id} value={cliente.id}>
-                                                       {cliente.nombre} {cliente.apellido}
-                                                   </option>
-                                               ))}
-                                           </Form.Select>
-                                           {clientes.length === 0 && (
-                                               <Form.Text className="text-danger">
-                                                   No hay clientes disponibles
-                                               </Form.Text>
-                                           )}
-                                       </>
+                                       <Form.Select
+                                           value={clienteId}
+                                           onChange={(e) => setClienteId(e.target.value)}
+                                           required
+                                           isInvalid={validated && !clienteId}
+                                           disabled={clientes.length === 0}
+                                       >
+                                           <option value="">Seleccione un cliente</option>
+                                           {clientes.map(cliente => (
+                                               <option key={cliente.id} value={cliente.id}>
+                                                   {cliente.nombre} {cliente.apellido}
+                                               </option>
+                                           ))}
+                                       </Form.Select>
                                    )}
                                    <Form.Control.Feedback type="invalid">
                                        Seleccione un cliente
@@ -199,20 +223,29 @@ const FormVenta = ({ handleShowVentas }) => {
                                            <th>Producto</th>
                                            <th>Cantidad</th>
                                            <th>Precio Unitario</th>
-                                           <th>Total</th>
+                                           <th>Sub Total</th>
+                                           <th>Acciones</th>
                                        </tr>
                                    </thead>
                                    <tbody>
                                        {productosSeleccionados.map((p, index) => (
                                            <tr key={index}>
-                                               <td>{p.nombre}</td>
+                                               <td>{p.productoName}</td>
                                                <td>{p.cantidad}</td>
                                                <td>Bs {p.precio.toFixed(2)}</td>
                                                <td>Bs {(p.cantidad * p.precio).toFixed(2)}</td>
+                                               <td>
+                                                   <Button variant="danger" onClick={() => eliminarProducto(index)}>
+                                                       Eliminar
+                                                   </Button>
+                                               </td>
                                            </tr>
                                        ))}
                                    </tbody>
                                </Table>
+
+                               {/* Mostrar el total de todos los productos */}
+                               <h4 className="text-end">Total: Bs {calcularTotal()}</h4>
 
                                <Button 
                                    variant="success" 

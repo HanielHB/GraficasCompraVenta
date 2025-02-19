@@ -1,20 +1,7 @@
-// models/venta.js
 module.exports = (sequelize, Sequelize) => {
     const Venta = sequelize.define("venta", {
-        cantidad: {
-            type: Sequelize.INTEGER,
-            allowNull: false
-        },
         fecha: {
             type: Sequelize.DATE,
-            allowNull: false
-        },
-        productoName: {
-            type: Sequelize.STRING,
-            allowNull: false
-        },
-        precio: {
-            type: Sequelize.DECIMAL(10, 2),
             allowNull: false
         },
         usuarioId: {
@@ -29,7 +16,7 @@ module.exports = (sequelize, Sequelize) => {
                 key: 'id'
             }
         },
-        // Este campo es para almacenar los productos de la venta como un arreglo JSON
+        // Aquí almacenaremos los productos como JSON
         productos: {
             type: Sequelize.JSON,
             allowNull: false

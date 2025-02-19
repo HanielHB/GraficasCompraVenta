@@ -122,14 +122,20 @@ exports.login = async (req, res) => {
             return res.status(401).json({ msg: "Credenciales inválidas" });
         }
 
-        // Generar token JWT (ejemplo: expira en 1 hora)
+        // Generar token JWT (expira en 1 hora)
         const token = jwt.sign({ id: usuario.id, tipo: usuario.tipo }, SECRET_KEY, { expiresIn: "1h" });
 
-        res.json({ token });
+        // ✅ Enviar también el usuarioId en la respuesta
+        res.json({ 
+            token, 
+            usuario: { id: usuario.id, email: usuario.email, tipo: usuario.tipo } 
+        });
+
     } catch (error) {
         sendError500(res, error);
     }
 };
+
 
 // 7. Logout (manejo en frontend principalmente)
 exports.logout = (req, res) => {

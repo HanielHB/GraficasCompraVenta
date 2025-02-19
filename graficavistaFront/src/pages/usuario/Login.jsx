@@ -15,16 +15,19 @@ const Login = () => {
         e.preventDefault();
         setLoading(true);
         setError("");
-
+    
         try {
             const response = await axios.post("http://localhost:3000/usuarios/login", {
                 email,
                 password,
             });
-
-            // Guardar el token en localStorage
+    
+            // Guardar el token y el usuarioId en localStorage
             localStorage.setItem("token", response.data.token);
-
+            localStorage.setItem("usuarioId", response.data.usuario.id);
+    
+            console.log("Usuario ID guardado:", response.data.usuario.id);
+    
             // Redirigir al dashboard
             navigate("/dashboard");
         } catch (error) {
@@ -33,6 +36,7 @@ const Login = () => {
             setLoading(false);
         }
     };
+    
 
     return (
         <Container fluid className="min-vh-100 d-flex align-items-center justify-content-center bg-light">

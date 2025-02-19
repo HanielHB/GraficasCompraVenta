@@ -41,10 +41,18 @@ const VentasGrafico = ({ ventas }) => {
             }, []);
             
             const uniqueProductos = ventas.reduce((acc, venta) => {
-                const producto = venta.productoName;
-                if (producto && !acc.includes(producto)) {
-                    acc.push(producto);
+                let productos = [];
+                try {
+                    productos = JSON.parse(venta.productos);  // Asegúrate de que 'productos' está en el formato correcto
+                } catch (error) {
+                    console.error("Error al parsear productos:", error);
+                    return acc;
                 }
+                productos.forEach(producto => {
+                    if (producto.nombre && !acc.includes(producto.nombre)) {
+                        acc.push(producto.nombre);
+                    }
+                });
                 return acc;
             }, []);
 
@@ -55,35 +63,52 @@ const VentasGrafico = ({ ventas }) => {
 
     const agruparVentasPorFecha = (ventasFiltradas, rango) => {
         const ventasAgrupadas = {};
-        
+    
         ventasFiltradas.forEach(venta => {
-            const fecha = new Date(venta.fecha);
-            let key;
-            
-            switch(rango) {
-                case 'dia':
-                    key = format(fecha, 'yyyy-MM-dd');
-                    break;
-                case 'semana':
-                    key = `${format(startOfWeek(fecha), 'yyyy-MM-dd')} a ${format(endOfWeek(fecha), 'yyyy-MM-dd')}`;
-                    break;
-                case 'mes':
-                    key = format(fecha, 'MMMM yyyy');
-                    break;
-                case 'año':
-                    key = format(fecha, 'yyyy');
-                    break;
-                default:
-                    key = format(fecha, 'yyyy-MM-dd');
+            let productos = [];
+            try {
+                productos = JSON.parse(venta.productos);  // Asegúrate de que 'productos' está en el formato correcto
+            } catch (error) {
+                console.error("Error al parsear productos:", error);
+                return;
             }
-            
-            const monto = parseFloat(venta.precio) * venta.cantidad;
-            
-            ventasAgrupadas[key] = (ventasAgrupadas[key] || 0) + monto;
-        });
 
+            productos.forEach(producto => {
+                if (selectedProducto !== 'todos' && producto.nombre !== selectedProducto) {
+                    return; // Si el producto no coincide con el seleccionado, lo ignoramos
+                }
+    
+                const fecha = new Date(venta.fecha);
+                let key;
+    
+                // Agrupamos las ventas según el rango de tiempo seleccionado
+                switch (rango) {
+                    case 'dia':
+                        key = format(fecha, 'yyyy-MM-dd');
+                        break;
+                    case 'semana':
+                        key = `${format(startOfWeek(fecha), 'yyyy-MM-dd')} a ${format(endOfWeek(fecha), 'yyyy-MM-dd')}`;
+                        break;
+                    case 'mes':
+                        key = format(fecha, 'MMMM yyyy');
+                        break;
+                    case 'año':
+                        key = format(fecha, 'yyyy');
+                        break;
+                    default:
+                        key = format(fecha, 'yyyy-MM-dd');
+                }
+    
+                const monto = parseFloat(producto.precio) * producto.cantidad;
+    
+                // Sumar el monto por fecha
+                ventasAgrupadas[key] = (ventasAgrupadas[key] || 0) + monto;
+            });
+        });
+    
         return ventasAgrupadas;
     };
+    
 
     const getChartLabel = (vendedorId, producto, rango) => {
         const vendedor = vendedores.find(v => v.id === parseInt(vendedorId));
@@ -111,20 +136,20 @@ const VentasGrafico = ({ ventas }) => {
     useEffect(() => {
         if (ventas && ventas.length > 0) {
             const ventasFiltradas = ventas.filter(venta => {
-                const filtroVendedor = selectedVendedorId === 'todos' || 
-                    venta.vendedorVenta.id === parseInt(selectedVendedorId);
+                const filtroVendedor = selectedVendedorId === 'todos' || venta.vendedorVenta.id === parseInt(selectedVendedorId);
                 
+                // Filtrar por producto seleccionado, verificando si el producto está dentro de la venta
                 const filtroProducto = selectedProducto === 'todos' || 
-                    venta.productoName === selectedProducto;
-                
+                    JSON.parse(venta.productos).some(producto => producto.nombre === selectedProducto);
+
                 return filtroVendedor && filtroProducto;
             });
-
+    
             const ventasAgrupadas = agruparVentasPorFecha(ventasFiltradas, timeRange);
-            
+    
             const labels = Object.keys(ventasAgrupadas);
             const data = Object.values(ventasAgrupadas);
-
+    
             setChartData({
                 labels,
                 datasets: [
@@ -186,10 +211,11 @@ const VentasGrafico = ({ ventas }) => {
                         <option value="todos">Todos los productos</option>
                         {productos.map(producto => (
                             <option key={producto} value={producto}>
-                                {producto} ({ventas.filter(venta => venta.productoName === producto).length} ventas)
+                                {producto} ({ventas.filter(venta => JSON.parse(venta.productos).some(p => p.nombre === producto)).length} ventas)
                             </option>
                         ))}
                     </select>
+
                     
                     <select 
                         className="form-select"

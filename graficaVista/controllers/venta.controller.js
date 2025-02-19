@@ -26,16 +26,28 @@ exports.listVentas = async (req, res) => {
 };
 
 // 2. Obtener una venta por ID
+// 2. Obtener una venta por ID
 exports.getVentaById = async (req, res) => {
     const id = req.params.id;
     try {
         const venta = await getVentaOr404(id, res);
         if (!venta) return; // La función ya maneja el 404
+
+        // Si los productos están almacenados como string, conviértelos en JSON
+        const productos = JSON.parse(venta.productos);  // Convierte los productos de string a objeto
+
+        // Ahora puedes trabajar con el array de productos como un objeto
+        venta.productos = productos;  // Si quieres devolverlo en la respuesta ya como un objeto
+
         res.json(venta);
     } catch (error) {
         sendError500(res, error);
     }
 };
+
+
+// 3. Crear una nueva venta
+// controllers/venta.controller.js
 
 // 3. Crear una nueva venta
 // 3. Crear una nueva venta
@@ -46,12 +58,17 @@ exports.createVenta = async (req, res) => {
     try {
         const { usuarioId, clienteId, productos, fecha } = req.body;
 
+        // Asegúrate de que productos esté en formato JSON antes de guardarlo
+        if (productos) {
+            req.body.productos = JSON.parse(productos); // Convierte el string a un objeto JSON
+        }
+
         // Crear la venta con los productos como un arreglo de objetos JSON
         const nuevaVenta = await db.venta.create({
             usuarioId,
             clienteId,
             fecha,
-            productos: productos  // Los productos son directamente un array de objetos
+            productos: req.body.productos  // Los productos ahora son un array de objetos
         });
 
         res.status(201).json(nuevaVenta);
@@ -61,9 +78,6 @@ exports.createVenta = async (req, res) => {
 };
 
 
-
-
-// 4. Actualizar una venta
 // 4. Actualizar una venta
 exports.updateVenta = async (req, res) => {
     const id = req.params.id;
@@ -71,12 +85,15 @@ exports.updateVenta = async (req, res) => {
         const venta = await getVentaOr404(id, res);
         if (!venta) return;
 
+        // Asegúrate de que productos esté en formato JSON antes de actualizar
+        if (req.body.productos) {
+            req.body.productos = JSON.parse(req.body.productos); // Convierte el string a un objeto JSON
+        }
+
         if (req.body.usuarioId) venta.usuarioId = req.body.usuarioId;
         if (req.body.clienteId) venta.clienteId = req.body.clienteId;
-        if (req.body.productoName) venta.productoName = req.body.productoName;
-        if (req.body.cantidad) venta.cantidad = req.body.cantidad;
         if (req.body.fecha) venta.fecha = req.body.fecha;
-        if (req.body.precio) venta.precio = req.body.precio; // Actualizar el precio
+        if (req.body.productos) venta.productos = req.body.productos; // Actualizar los productos
 
         await venta.save();
         res.json(venta);
@@ -84,6 +101,8 @@ exports.updateVenta = async (req, res) => {
         sendError500(res, error);
     }
 };
+
+
 
 // 5. Eliminar una venta
 exports.deleteVenta = async (req, res) => {
