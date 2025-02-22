@@ -1,18 +1,20 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Table, Spinner, Modal } from 'react-bootstrap';
-import { FiPlus, FiEdit, FiTrash2 } from "react-icons/fi";
+import { Button, Table, Spinner, Modal, Card, ButtonGroup, Stack } from 'react-bootstrap';
+import { FiPlus, FiEdit, FiTrash2, FiInfo } from "react-icons/fi";
+import { useMediaQuery } from 'react-responsive';
 
 const ListCompra = ({ handleShowFormCompra, handleRefresh }) => {
     const navigate = useNavigate();
+    const isMobile = useMediaQuery({ maxWidth: 768 });
     const [compras, setCompras] = useState([]);
     const [selectedId, setSelectedId] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [showModalDetalles, setShowModalDetalles] = useState(false); // Modal para detalles de compra
-    const [showModalEliminar, setShowModalEliminar] = useState(false); // Modal para confirmación de eliminación
-    const [compraDetalles, setcompraDetalles] = useState(null); // Para almacenar los detalles de la compra seleccionada
-    const [tipoUsuario, setTipoUsuario] = useState(""); // Estado para almacenar el tipo de usuario
+    const [showModalDetalles, setShowModalDetalles] = useState(false);
+    const [showModalEliminar, setShowModalEliminar] = useState(false);
+    const [compraDetalles, setcompraDetalles] = useState(null);
+    const [tipoUsuario, setTipoUsuario] = useState("");
 
     useEffect(() => {
         getListaCompras();
@@ -91,83 +93,154 @@ const ListCompra = ({ handleShowFormCompra, handleRefresh }) => {
     };
 
     return (
-        <div className="container p-4">
-            <div className="d-flex justify-content-between mb-4">
-                <h2>Gestión de compras</h2>
+        <div className="container p-3">
+            <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+                <h2 className="h5 mb-0">Gestión de Compras</h2>
                 {tipoUsuario !== "cliente" && (
-                <Button variant="primary" onClick={crearNuevaCompra}>
-                    <FiPlus /> Nueva compra
-                </Button>
+                    <Button variant="primary" size="sm" onClick={crearNuevaCompra}>
+                        <FiPlus /> {!isMobile && "Nueva Compra"}
+                    </Button>
                 )}
             </div>
 
             {isLoading ? (
-                <Spinner animation="border" variant="primary" />
+                <div className="text-center">
+                    <Spinner animation="border" variant="primary" />
+                </div>
+            ) : compras.length === 0 ? (
+                <p className="text-center">No se encontraron compras</p>
+            ) : isMobile ? (
+                // Vista móvil
+                <div className="row g-3">
+                    {compras.map(compra => {
+                        const montoTotal = calcularMontoTotal(compra.productos);
+                        return (
+                            <div key={compra.id} className="col-12">
+                                <Card className="shadow-sm">
+                                    <Card.Body>
+                                        <div className="d-flex justify-content-between align-items-center mb-2">
+                                            <span className="badge bg-primary">#{compra.id}</span>
+                                            <small className="text-muted">{formatFecha(compra.fecha)}</small>
+                                        </div>
+                                        
+                                        <div className="mb-3">
+                                            <div className="row g-1">
+                                                <div className="col-4 text-muted">Total:</div>
+                                                <div className="col-8 fw-bold">Bs {montoTotal}</div>
+                                            </div>
+                                            <div className="row g-1">
+                                                <div className="col-4 text-muted">Vendedor:</div>
+                                                <div className="col-8 text-truncate">
+                                                    {compra.vendedorCompra?.nombre || `Usuario #${compra.usuarioId}`}
+                                                </div>
+                                            </div>
+                                            <div className="row g-1">
+                                                <div className="col-4 text-muted">Cliente:</div>
+                                                <div className="col-8 text-truncate">
+                                                    {compra.clienteCompra?.nombre || `Usuario #${compra.clienteId}`}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <ButtonGroup size="sm" className="w-100">
+                                            <Button 
+                                                variant="outline-info"
+                                                onClick={() => handleVerDetalles(compra)}
+                                            >
+                                                <FiInfo />
+                                            </Button>
+                                            {tipoUsuario !== "cliente" && (
+                                                <>
+                                                    <Button 
+                                                        variant="outline-primary"
+                                                        onClick={() => editarCompra(compra.id)}
+                                                    >
+                                                        <FiEdit />
+                                                    </Button>
+                                                    <Button 
+                                                        variant="outline-danger"
+                                                        onClick={() => {
+                                                            setSelectedId(compra.id);
+                                                            setShowModalEliminar(true);
+                                                        }}
+                                                    >
+                                                        <FiTrash2 />
+                                                    </Button>
+                                                </>
+                                            )}
+                                        </ButtonGroup>
+                                    </Card.Body>
+                                </Card>
+                            </div>
+                        );
+                    })}
+                </div>
             ) : (
-                <Table striped bordered hover responsive>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Monto Total</th>
-                            <th>Fecha</th>
-                            <th>Vendedor</th>
-                            <th>Cliente</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {compras.length === 0 ? (
+                // Vista desktop
+                <div style={{ overflowX: "auto" }}>
+                    <Table striped bordered hover responsive>
+                        <thead>
                             <tr>
-                                <td colSpan="8" className="text-center">No se encontraron compras</td>
+                                <th>ID</th>
+                                <th>Total</th>
+                                <th>Fecha</th>
+                                <th>Vendedor</th>
+                                <th>Cliente</th>
+                                <th>Acciones</th>
                             </tr>
-                        ) : (
-                            compras.map(compra => {
+                        </thead>
+                        <tbody>
+                            {compras.map(compra => {
                                 const montoTotal = calcularMontoTotal(compra.productos);
                                 return (
                                     <tr key={compra.id}>
                                         <td>{compra.id}</td>
                                         <td>Bs {montoTotal}</td>
                                         <td>{formatFecha(compra.fecha)}</td>
-                                        <td>{compra.vendedorCompra?.nombre || `Usuario #${compra.usuarioId}`}</td>
-                                        <td>{compra.clienteCompra?.nombre || `Usuario #${compra.clienteId}`}</td>
-                                        <td className="d-flex justify-content-center align-items-center">
-                                            {tipoUsuario !== "cliente" && (
-                                                <>
-                                                    <Button 
-                                                        variant="info" 
-                                                        onClick={() => editarCompra(compra.id)} 
-                                                        className="me-2"
-                                                    >
-                                                        <FiEdit /> Editar
-                                                    </Button>
-                                                    <Button 
-                                                        variant="danger" 
-                                                        onClick={() => {
-                                                            setSelectedId(compra.id);
-                                                            setShowModalEliminar(true);
-                                                        }}
-                                                    >
-                                                        <FiTrash2 /> Eliminar
-                                                    </Button>
-                                                </>
-
-                                            )}
-                                            
-                                            <Button 
-                                                variant="secondary"
-                                                onClick={() => handleVerDetalles(compra)}
-                                                className="me-2"
-                                            >
-                                                Ver detalles
-                                            </Button>
-                                            
+                                        <td className="text-truncate" style={{ maxWidth: '150px' }}>
+                                            {compra.vendedorCompra?.nombre || `Usuario #${compra.usuarioId}`}
+                                        </td>
+                                        <td className="text-truncate" style={{ maxWidth: '150px' }}>
+                                            {compra.clienteCompra?.nombre || `Usuario #${compra.clienteId}`}
+                                        </td>
+                                        <td>
+                                            <Stack direction="horizontal" gap={2}>
+                                                <Button 
+                                                    variant="outline-info"
+                                                    size="sm" 
+                                                    onClick={() => handleVerDetalles(compra)}
+                                                >
+                                                    <FiInfo /> Detalles
+                                                </Button>
+                                                {tipoUsuario !== "cliente" && (
+                                                    <>
+                                                        <Button 
+                                                            variant="outline-primary"
+                                                            size="sm"
+                                                            onClick={() => editarCompra(compra.id)}
+                                                        >
+                                                            <FiEdit /> Editar
+                                                        </Button>
+                                                        <Button 
+                                                            variant="outline-danger"
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                setSelectedId(compra.id);
+                                                                setShowModalEliminar(true);
+                                                            }}
+                                                        >
+                                                            <FiTrash2 />
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </Stack>
                                         </td>
                                     </tr>
                                 );
-                            })
-                        )}
-                    </tbody>
-                </Table>
+                            })}
+                        </tbody>
+                    </Table>
+                </div>
             )}
 
             {/* Modal para ver detalles de la compra */}

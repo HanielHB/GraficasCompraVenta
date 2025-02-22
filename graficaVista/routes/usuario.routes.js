@@ -14,7 +14,7 @@ module.exports = app => {
             tipo: req.user.tipo
         });
     });
-    
+
     // Rutas protegidas para administrar usuarios
     // Solo un ADMIN puede listar, obtener, crear, actualizar y eliminar usuarios
     router.get('/', [verifyToken], controller.listUsuarios);

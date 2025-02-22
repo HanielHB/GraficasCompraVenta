@@ -1,24 +1,26 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Table, Spinner, Modal, Form } from 'react-bootstrap';
-import { FiPlus, FiEdit, FiTrash2 } from "react-icons/fi";
+import { Button, Table, Spinner, Modal, Form, Card, ButtonGroup, Stack } from 'react-bootstrap';
+import { FiPlus, FiEdit, FiTrash2, FiImage, FiInfo } from "react-icons/fi";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { useMediaQuery } from 'react-responsive';
 
 const ListVenta = ({ handleShowFormVenta, handleRefresh }) => {
     const navigate = useNavigate();
+    const isMobile = useMediaQuery({ maxWidth: 768 });
     const [ventas, setVentas] = useState([]);
     const [selectedId, setSelectedId] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [showModalDetalles, setShowModalDetalles] = useState(false); 
-    const [showModalEliminar, setShowModalEliminar] = useState(false); 
-    const [ventaDetalles, setVentaDetalles] = useState(null); 
-    const [tipoUsuario, setTipoUsuario] = useState(""); 
+    const [showModalDetalles, setShowModalDetalles] = useState(false);
+    const [showModalEliminar, setShowModalEliminar] = useState(false);
+    const [ventaDetalles, setVentaDetalles] = useState(null);
+    const [tipoUsuario, setTipoUsuario] = useState("");
 
-    const [showModalUpload, setShowModalUpload] = useState(false); // Modal para subir imagen
-    const [selectedVentaId, setSelectedVentaId] = useState(null); // Para saber qué venta fue seleccionada
-    const [file, setFile] = useState(null); // Para almacenar el archivo seleccionado
+    const [showModalUpload, setShowModalUpload] = useState(false);
+    const [selectedVentaId, setSelectedVentaId] = useState(null);
+    const [file, setFile] = useState(null);
 
     useEffect(() => {
         getListaVentas();
@@ -30,7 +32,7 @@ const ListVenta = ({ handleShowFormVenta, handleRefresh }) => {
         const userData = localStorage.getItem("user");
         if (userData) {
             const user = JSON.parse(userData);
-            setTipoUsuario(user.tipo); // Asignamos el tipo de usuario
+            setTipoUsuario(user.tipo);
         }
     };
 
@@ -41,9 +43,9 @@ const ListVenta = ({ handleShowFormVenta, handleRefresh }) => {
             });
             const ventasConProductos = res.data.map(venta => ({
                 ...venta,
-                productos: JSON.parse(venta.productos) // Convertimos el string JSON en un array de objetos
+                productos: JSON.parse(venta.productos)
             }));
-            setVentas(ventasConProductos); // Actualizamos el estado con los datos procesados
+            setVentas(ventasConProductos);
         } catch (error) {
             alert("Error al cargar las ventas");
         } finally {
@@ -65,7 +67,6 @@ const ListVenta = ({ handleShowFormVenta, handleRefresh }) => {
         }
     };
 
-
     const handleFileChange = (e) => {
         setFile(e.target.files[0]);
     };
@@ -75,10 +76,10 @@ const ListVenta = ({ handleShowFormVenta, handleRefresh }) => {
             alert("Por favor, selecciona una imagen para subir.");
             return;
         }
-    
+
         const formData = new FormData();
-        formData.append("archivo", file);  // Cambiar 'imagen' por 'archivo'
-    
+        formData.append("archivo", file);
+
         try {
             await axios.post(`http://localhost:3000/ventas/upload/${selectedVentaId}`, formData, {
                 headers: {
@@ -87,8 +88,8 @@ const ListVenta = ({ handleShowFormVenta, handleRefresh }) => {
                 },
             });
             alert("Imagen subida correctamente");
-            getListaVentas();  // Recargar la lista de ventas para mostrar la imagen subida
-            setShowModalUpload(false); // Cerrar el modal
+            getListaVentas();
+            setShowModalUpload(false);
         } catch (error) {
             alert("Error al subir la imagen");
         }
@@ -109,7 +110,9 @@ const ListVenta = ({ handleShowFormVenta, handleRefresh }) => {
     };
 
     const formatFecha = (fechaString) => {
-        const options = { year: 'numeric', month: 'long', day: 'numeric' };
+        const options = isMobile 
+            ? { day: '2-digit', month: '2-digit', year: 'numeric' } 
+            : { year: 'numeric', month: 'long', day: 'numeric' };
         return new Date(fechaString).toLocaleDateString('es-ES', options);
     };
 
@@ -133,15 +136,13 @@ const ListVenta = ({ handleShowFormVenta, handleRefresh }) => {
     const exportarPDF = () => {
         const doc = new jsPDF();
         doc.text("Lista de Ventas", 14, 10);
-    
-        // Definir las columnas de la tabla
+
         const columnas = [
             "ID", "Fecha", "Vendedor", "Cliente", "Producto", "Cantidad", "Precio Unitario", "Subtotal"
         ];
-    
-        // Extraer datos de ventas en un formato adecuado
+
         const filas = [];
-    
+
         ventas.forEach((venta) => {
             venta.productos.forEach((producto) => {
                 filas.push([
@@ -156,8 +157,7 @@ const ListVenta = ({ handleShowFormVenta, handleRefresh }) => {
                 ]);
             });
         });
-    
-        // Generar la tabla
+
         autoTable(doc, {
             head: [columnas],
             body: filas,
@@ -165,102 +165,179 @@ const ListVenta = ({ handleShowFormVenta, handleRefresh }) => {
             theme: "striped",
             styles: { fontSize: 8 },
         });
-    
-        // Guardar el PDF
+
         doc.save("Lista_Ventas.pdf");
     };
 
     return (
-        <div className="container p-4">
-            <div className="d-flex justify-content-between mb-4">
-                <h2>Gestión de Ventas</h2>
+        <div className="container p-3">
+            <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+                <h2 className="h5 mb-0">Gestión de Ventas</h2>
                 {tipoUsuario !== "cliente" && (
-                    <>
-                        <Button variant="primary" onClick={crearNuevaVenta}>
-                        <FiPlus /> Nueva Venta
+                    <div className="d-flex gap-2">
+                        <Button variant="primary" size="sm" onClick={crearNuevaVenta}>
+                            <FiPlus /> {!isMobile && "Nueva Venta"}
                         </Button>
-                        <Button variant="success" onClick={exportarPDF}>
-                        📄 Exportar PDF
+                        <Button variant="success" size="sm" onClick={exportarPDF}>
+                            📄 {!isMobile && "Exportar PDF"}
                         </Button>
-                    </>
-                    
+                    </div>
                 )}
             </div>
 
             {isLoading ? (
-                <Spinner animation="border" variant="primary" />
+                <div className="text-center">
+                    <Spinner animation="border" variant="primary" />
+                </div>
+            ) : ventas.length === 0 ? (
+                <p className="text-center">No se encontraron ventas</p>
+            ) : isMobile ? (
+                // Vista móvil
+                <div className="row g-3">
+                    {ventas.map(venta => {
+                        const montoTotal = calcularMontoTotal(venta.productos);
+                        return (
+                            <div key={venta.id} className="col-12">
+                                <Card className="shadow-sm">
+                                    <Card.Body>
+                                        <div className="d-flex justify-content-between align-items-center mb-2">
+                                            <span className="badge bg-primary">#{venta.id}</span>
+                                            <small className="text-muted">{formatFecha(venta.fecha)}</small>
+                                        </div>
+                                        
+                                        <div className="mb-3">
+                                            <div className="row g-1">
+                                                <div className="col-4 text-muted">Total:</div>
+                                                <div className="col-8 fw-bold">Bs {montoTotal}</div>
+                                            </div>
+                                            <div className="row g-1">
+                                                <div className="col-4 text-muted">Vendedor:</div>
+                                                <div className="col-8 text-truncate">
+                                                    {venta.vendedorVenta?.nombre || `Usuario #${venta.usuarioId}`}
+                                                </div>
+                                            </div>
+                                            <div className="row g-1">
+                                                <div className="col-4 text-muted">Cliente:</div>
+                                                <div className="col-8 text-truncate">
+                                                    {venta.clienteVenta?.nombre || `Usuario #${venta.clienteId}`}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <ButtonGroup size="sm" className="w-100">
+                                            <Button 
+                                                variant="outline-info"
+                                                onClick={() => handleVerDetalles(venta)}
+                                            >
+                                                <FiInfo />
+                                            </Button>
+                                            {tipoUsuario !== "cliente" && (
+                                                <>
+                                                    <Button 
+                                                        variant="outline-primary"
+                                                        onClick={() => editarVenta(venta.id)}
+                                                    >
+                                                        <FiEdit />
+                                                    </Button>
+                                                    <Button 
+                                                        variant="outline-danger"
+                                                        onClick={() => {
+                                                            setSelectedId(venta.id);
+                                                            setShowModalEliminar(true);
+                                                        }}
+                                                    >
+                                                        <FiTrash2 />
+                                                    </Button>
+                                                    <Button 
+                                                        variant="outline-secondary"
+                                                        onClick={() => handleShowUploadModal(venta.id)}
+                                                    >
+                                                        <FiImage />
+                                                    </Button>
+                                                </>
+                                            )}
+                                        </ButtonGroup>
+                                    </Card.Body>
+                                </Card>
+                            </div>
+                        );
+                    })}
+                </div>
             ) : (
-                <Table striped bordered hover responsive>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Monto Total</th>
-                            <th>Fecha</th>
-                            <th>Vendedor</th>
-                            <th>Cliente</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {ventas.length === 0 ? (
+                // Vista desktop
+                <div style={{ overflowX: "auto" }}>
+                    <Table striped bordered hover responsive>
+                        <thead>
                             <tr>
-                                <td colSpan="8" className="text-center">No se encontraron ventas</td>
+                                <th>ID</th>
+                                <th>Total</th>
+                                <th>Fecha</th>
+                                <th>Vendedor</th>
+                                <th>Cliente</th>
+                                <th>Acciones</th>
                             </tr>
-                        ) : (
-                            ventas.map(venta => {
+                        </thead>
+                        <tbody>
+                            {ventas.map(venta => {
                                 const montoTotal = calcularMontoTotal(venta.productos);
                                 return (
                                     <tr key={venta.id}>
                                         <td>{venta.id}</td>
                                         <td>Bs {montoTotal}</td>
                                         <td>{formatFecha(venta.fecha)}</td>
-                                        <td>{venta.vendedorVenta?.nombre || `Usuario #${venta.usuarioId}`}</td>
-                                        <td>{venta.clienteVenta?.nombre || `Usuario #${venta.clienteId}`}</td>
-                                        <td className="d-flex justify-content-center align-items-center">
-                                            {tipoUsuario !== "cliente" && (
-                                                <>
-                                                    <Button 
-                                                        variant="info" 
-                                                        onClick={() => editarVenta(venta.id)} 
-                                                        className="me-2"
-                                                    >
-                                                        <FiEdit /> Editar
-                                                    </Button>
-                                                    <Button 
-                                                        variant="danger" 
-                                                        onClick={() => {
-                                                            setSelectedId(venta.id);
-                                                            setShowModalEliminar(true);
-                                                        }}
-                                                    >
-                                                        <FiTrash2 /> Eliminar
-                                                    </Button>
-
-                                                    <Button 
-                                                        variant="secondary" 
-                                                        onClick={() => handleShowUploadModal(venta.id)} 
-                                                        className="me-2"
-                                                    >
-                                                        Subir Imagen
-                                                    </Button>
-                                                </>
-                                            )}
-                                            
-                                            <Button 
-                                                variant="secondary"
-                                                onClick={() => handleVerDetalles(venta)}
-                                                className="me-2"
-                                            >
-                                                Ver detalles
-                                            </Button>
+                                        <td className="text-truncate" style={{ maxWidth: '150px' }}>
+                                            {venta.vendedorVenta?.nombre || `Usuario #${venta.usuarioId}`}
+                                        </td>
+                                        <td className="text-truncate" style={{ maxWidth: '150px' }}>
+                                            {venta.clienteVenta?.nombre || `Usuario #${venta.clienteId}`}
+                                        </td>
+                                        <td>
+                                            <Stack direction="horizontal" gap={2}>
+                                                <Button 
+                                                    variant="outline-info"
+                                                    size="sm" 
+                                                    onClick={() => handleVerDetalles(venta)}
+                                                >
+                                                    <FiInfo /> Detalles
+                                                </Button>
+                                                {tipoUsuario !== "cliente" && (
+                                                    <>
+                                                        <Button 
+                                                            variant="outline-primary"
+                                                            size="sm"
+                                                            onClick={() => editarVenta(venta.id)}
+                                                        >
+                                                            <FiEdit /> Editar
+                                                        </Button>
+                                                        <Button 
+                                                            variant="outline-danger"
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                setSelectedId(venta.id);
+                                                                setShowModalEliminar(true);
+                                                            }}
+                                                        >
+                                                            <FiTrash2 />
+                                                        </Button>
+                                                        <Button 
+                                                            variant="outline-secondary"
+                                                            size="sm"
+                                                            onClick={() => handleShowUploadModal(venta.id)}
+                                                        >
+                                                            <FiImage /> Imagen
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </Stack>
                                         </td>
                                     </tr>
                                 );
-                            })
-                        )}
-                    </tbody>
-                </Table>
+                            })}
+                        </tbody>
+                    </Table>
+                </div>
             )}
+
             {/* Modal para subir imagen */}
             <Modal show={showModalUpload} onHide={() => setShowModalUpload(false)}>
                 <Modal.Header closeButton>
@@ -288,7 +365,6 @@ const ListVenta = ({ handleShowFormVenta, handleRefresh }) => {
                 </Modal.Footer>
             </Modal>
 
-            {/* Modal para ver detalles de la venta */}
             <Modal show={showModalDetalles} onHide={() => setShowModalDetalles(false)} size="lg">
                 <Modal.Header closeButton>
                     <Modal.Title>Factura de Venta</Modal.Title>
@@ -346,7 +422,6 @@ const ListVenta = ({ handleShowFormVenta, handleRefresh }) => {
                 </Modal.Footer>
             </Modal>
 
-            {/* Modal de confirmación de eliminación */}
             <Modal show={showModalEliminar} onHide={() => setShowModalEliminar(false)}>
                 <Modal.Header closeButton>
                     <Modal.Title>Eliminar Venta</Modal.Title>

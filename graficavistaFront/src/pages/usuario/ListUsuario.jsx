@@ -1,12 +1,14 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Table, Badge, Spinner, Modal } from 'react-bootstrap';
+import { Button, Table, Badge, Spinner, Modal, Card, ButtonGroup, Stack } from 'react-bootstrap';
 import { FiPlus, FiEdit, FiTrash2 } from "react-icons/fi";
+import { useMediaQuery } from 'react-responsive';
 import './ListUsuario.css';
 
 const ListUsuario = ({ handleShowForm }) => {  // Recibimos la función handleShowForm como prop
     const navigate = useNavigate();
+    const isMobile = useMediaQuery({ maxWidth: 768 });
     const [usuarios, setUsuarios] = useState([]);
     const [selectedId, setSelectedId] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -53,69 +55,120 @@ const ListUsuario = ({ handleShowForm }) => {  // Recibimos la función handleSh
         handleShowForm();
     };
 
+    const getBadgeColor = (tipo) => {
+        return tipo === "admin" ? "primary" :
+            tipo === "vendedor" ? "success" :
+            tipo === "cliente" ? "warning" : "secondary";
+    };
+
     return (
-        <div className="container p-4">
-            <div className="d-flex justify-content-between mb-4">
-                <h2>Gestión de Usuarios</h2>
-                <Button variant="primary" onClick={crearNuevoUsuario}>
-                    <FiPlus /> Nuevo Usuario
+        <div className="container p-3">
+            <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+                <h2 className="h5 mb-0">Gestión de Usuarios</h2>
+                <Button variant="primary" size="sm" onClick={crearNuevoUsuario}>
+                    <FiPlus /> {!isMobile && "Nuevo Usuario"}
                 </Button>
             </div>
 
             {isLoading ? (
-                <Spinner animation="border" variant="primary" />
-            ) : (
-                <Table striped bordered hover responsive>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Email</th>
-                            <th>Tipo</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {usuarios.length === 0 ? (
-                            <tr>
-                                <td colSpan="4" className="text-center">No se encontraron usuarios</td>
-                            </tr>
-                        ) : (
-                            usuarios.map(usuario => (
-                                <tr key={usuario.id}>
-                                    <td>{usuario.id}</td>
-                                    <td>{usuario.email}</td>
-                                    <td>
-                                        <Badge bg={
-                                            usuario.tipo === "admin" ? "primary" :
-                                            usuario.tipo === "vendedor" ? "success" :
-                                            usuario.tipo === "cliente" ? "warning" : "secondary"
-                                        }>
+                <div className="text-center">
+                    <Spinner animation="border" variant="primary" />
+                </div>
+            ) : usuarios.length === 0 ? (
+                <p className="text-center">No se encontraron usuarios</p>
+            ) : isMobile ? (
+                // Vista móvil
+                <div className="row g-3">
+                    {usuarios.map(usuario => (
+                        <div key={usuario.id} className="col-12">
+                            <Card className="shadow-sm">
+                                <Card.Body>
+                                    <div className="d-flex justify-content-between align-items-center mb-2">
+                                        <span className="fw-bold">#{usuario.id}</span>
+                                        <Badge bg={getBadgeColor(usuario.tipo)}>
                                             {usuario.tipo?.toUpperCase() || 'SIN TIPO'}
                                         </Badge>
-                                    </td>
-                                    <td className="d-flex justify-content-center align-items-center">
+                                    </div>
+                                    
+                                    <div className="mb-3">
+                                        <div className="text-truncate">
+                                            <small className="text-muted">Email:</small><br/>
+                                            {usuario.email}
+                                        </div>
+                                    </div>
+
+                                    <ButtonGroup size="sm" className="w-100">
                                         <Button 
-                                            variant="info" 
-                                            onClick={() => editarUsuario(usuario.id)} 
-                                            className="me-2"
+                                            variant="outline-primary"
+                                            onClick={() => editarUsuario(usuario.id)}
                                         >
-                                            <FiEdit /> Editar
+                                            <FiEdit />
                                         </Button>
                                         <Button 
-                                            variant="danger" 
+                                            variant="outline-danger"
                                             onClick={() => {
                                                 setSelectedId(usuario.id);
                                                 setShowModal(true);
                                             }}
                                         >
-                                            <FiTrash2 /> Eliminar
+                                            <FiTrash2 />
                                         </Button>
+                                    </ButtonGroup>
+                                </Card.Body>
+                            </Card>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                // Vista desktop
+                <div style={{ overflowX: "auto" }}>
+                    <Table striped bordered hover responsive>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Email</th>
+                                <th>Tipo</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {usuarios.map(usuario => (
+                                <tr key={usuario.id}>
+                                    <td>{usuario.id}</td>
+                                    <td className="text-truncate" style={{ maxWidth: '200px' }}>
+                                        {usuario.email}
+                                    </td>
+                                    <td>
+                                        <Badge bg={getBadgeColor(usuario.tipo)}>
+                                            {usuario.tipo?.toUpperCase() || 'SIN TIPO'}
+                                        </Badge>
+                                    </td>
+                                    <td>
+                                        <Stack direction="horizontal" gap={2}>
+                                            <Button 
+                                                variant="outline-primary"
+                                                size="sm"
+                                                onClick={() => editarUsuario(usuario.id)}
+                                            >
+                                                <FiEdit /> Editar
+                                            </Button>
+                                            <Button 
+                                                variant="outline-danger"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setSelectedId(usuario.id);
+                                                    setShowModal(true);
+                                                }}
+                                            >
+                                                <FiTrash2 /> Eliminar
+                                            </Button>
+                                        </Stack>
                                     </td>
                                 </tr>
-                            ))
-                        )}
-                    </tbody>
-                </Table>
+                            ))}
+                        </tbody>
+                    </Table>
+                </div>
             )}
 
             <Modal show={showModal} onHide={() => setShowModal(false)}>
