@@ -2,6 +2,7 @@
 
 const { verifyToken, isAdmin, isVendedor, isAdminOrVendedor , isOwnerOrAdmin} = require("../middlewares/auth.middleware");
 const controller = require("../controllers/venta.controller.js");
+const upload = require("../middlewares/upload");  // Importamos multer
 
 module.exports = app => {
     const router = require("express").Router();
@@ -20,6 +21,11 @@ module.exports = app => {
 
     // Eliminar venta
     router.delete('/:id', [verifyToken, isOwnerOrAdmin], controller.deleteVenta);
+
+    // Nueva ruta para subir archivos
+    // Cambiar esta línea para que sea dinámica con el ID de la venta
+    router.post('/upload/:id', [verifyToken, isAdminOrVendedor], controller.uploadFile);
+
 
     app.use('/ventas', router);
 };

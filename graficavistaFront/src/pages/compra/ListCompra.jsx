@@ -12,11 +12,21 @@ const ListCompra = ({ handleShowFormCompra, handleRefresh }) => {
     const [showModalDetalles, setShowModalDetalles] = useState(false); // Modal para detalles de compra
     const [showModalEliminar, setShowModalEliminar] = useState(false); // Modal para confirmación de eliminación
     const [compraDetalles, setcompraDetalles] = useState(null); // Para almacenar los detalles de la compra seleccionada
+    const [tipoUsuario, setTipoUsuario] = useState(""); // Estado para almacenar el tipo de usuario
 
     useEffect(() => {
         getListaCompras();
+        obtenerTipoUsuario();
         document.title = "Lista de compras";
     }, []);
+
+    const obtenerTipoUsuario = () => {
+        const userData = localStorage.getItem("user");
+        if (userData) {
+            const user = JSON.parse(userData);
+            setTipoUsuario(user.tipo); // Asignamos el tipo de usuario
+        }
+    };
 
     const getListaCompras = async () => {
         try {
@@ -84,9 +94,11 @@ const ListCompra = ({ handleShowFormCompra, handleRefresh }) => {
         <div className="container p-4">
             <div className="d-flex justify-content-between mb-4">
                 <h2>Gestión de compras</h2>
+                {tipoUsuario !== "cliente" && (
                 <Button variant="primary" onClick={crearNuevaCompra}>
                     <FiPlus /> Nueva compra
                 </Button>
+                )}
             </div>
 
             {isLoading ? (
@@ -119,13 +131,28 @@ const ListCompra = ({ handleShowFormCompra, handleRefresh }) => {
                                         <td>{compra.vendedorCompra?.nombre || `Usuario #${compra.usuarioId}`}</td>
                                         <td>{compra.clienteCompra?.nombre || `Usuario #${compra.clienteId}`}</td>
                                         <td className="d-flex justify-content-center align-items-center">
-                                            <Button 
-                                                variant="info" 
-                                                onClick={() => editarCompra(compra.id)} 
-                                                className="me-2"
-                                            >
-                                                <FiEdit /> Editar
-                                            </Button>
+                                            {tipoUsuario !== "cliente" && (
+                                                <>
+                                                    <Button 
+                                                        variant="info" 
+                                                        onClick={() => editarCompra(compra.id)} 
+                                                        className="me-2"
+                                                    >
+                                                        <FiEdit /> Editar
+                                                    </Button>
+                                                    <Button 
+                                                        variant="danger" 
+                                                        onClick={() => {
+                                                            setSelectedId(compra.id);
+                                                            setShowModalEliminar(true);
+                                                        }}
+                                                    >
+                                                        <FiTrash2 /> Eliminar
+                                                    </Button>
+                                                </>
+
+                                            )}
+                                            
                                             <Button 
                                                 variant="secondary"
                                                 onClick={() => handleVerDetalles(compra)}
@@ -133,15 +160,7 @@ const ListCompra = ({ handleShowFormCompra, handleRefresh }) => {
                                             >
                                                 Ver detalles
                                             </Button>
-                                            <Button 
-                                                variant="danger" 
-                                                onClick={() => {
-                                                    setSelectedId(compra.id);
-                                                    setShowModalEliminar(true);
-                                                }}
-                                            >
-                                                <FiTrash2 /> Eliminar
-                                            </Button>
+                                            
                                         </td>
                                     </tr>
                                 );

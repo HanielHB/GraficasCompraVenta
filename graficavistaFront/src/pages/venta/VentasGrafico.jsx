@@ -4,6 +4,7 @@ import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement
 import 'chartjs-adapter-date-fns';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 
+
 ChartJS.register(
     CategoryScale,
     LinearScale,
@@ -21,6 +22,7 @@ const VentasGrafico = ({ ventas }) => {
     const [selectedProducto, setSelectedProducto] = useState('todos');
     const [vendedores, setVendedores] = useState([]);
     const [productos, setProductos] = useState([]);
+    const [tipoUsuario, setTipoUsuario] = useState(""); // Estado para almacenar el tipo de usuario
     const [chartData, setChartData] = useState({
         labels: [],
         datasets: []
@@ -28,6 +30,7 @@ const VentasGrafico = ({ ventas }) => {
 
     // Obtener lista de vendedores y productos únicos
     useEffect(() => {
+        obtenerTipoUsuario();
         if (ventas) {
             const uniqueVendedores = ventas.reduce((acc, venta) => {
                 const vendedor = venta.vendedorVenta;
@@ -60,6 +63,14 @@ const VentasGrafico = ({ ventas }) => {
             setProductos(uniqueProductos);
         }
     }, [ventas]);
+
+    const obtenerTipoUsuario = () => {
+        const userData = localStorage.getItem("user");
+        if (userData) {
+            const user = JSON.parse(userData);
+            setTipoUsuario(user.tipo); // Asignamos el tipo de usuario
+        }
+    };
 
     const agruparVentasPorFecha = (ventasFiltradas, rango) => {
         const ventasAgrupadas = {};
@@ -190,7 +201,8 @@ const VentasGrafico = ({ ventas }) => {
             <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
                 <h3 className="mb-0">Análisis de Ventas</h3>
                 <div className="d-flex gap-2 flex-wrap">
-                    <select 
+                    {tipoUsuario !== "cliente" && (
+                        <select 
                         className="form-select"
                         value={selectedVendedorId}
                         onChange={(e) => setSelectedVendedorId(e.target.value)}
@@ -201,7 +213,9 @@ const VentasGrafico = ({ ventas }) => {
                                 {v.nombre} ({ventas.filter(venta => venta.vendedorVenta.id === v.id).length} ventas)
                             </option>
                         ))}
-                    </select>
+                        </select>
+                    )}
+                    
                     
                     <select 
                         className="form-select"

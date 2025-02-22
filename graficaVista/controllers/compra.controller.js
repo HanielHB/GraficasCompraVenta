@@ -11,34 +11,26 @@ exports.listCompras = async (req, res) => {
             return res.status(401).json({ error: "Usuario no autenticado" });
         }
 
-        // Obtener el tipo y ID del usuario logeado desde el token
-        const usuarioId = req.user.id;  // ✅ Corregido: usar req.user
-        const tipoUsuario = req.user.tipo;  // ✅ Corregido: usar req.user
+        const usuarioId = req.user.id;
+        const tipoUsuario = req.user.tipo;
 
-        // Si es admin, traemos todas las compras
-        if (tipoUsuario === 'admin') {
-            const compras = await db.compra.findAll({
-                include: [
-                    { 
-                        model: db.usuario, 
-                        as: "vendedorCompra",
-                        attributes: ["id", "nombre", "apellido", "tipo"] 
-                    },
-                    { 
-                        model: db.usuario, 
-                        as: "clienteCompra", 
-                        attributes: ["id", "nombre", "apellido", "tipo"] 
-                    }
-                ]
-            });
-            return res.json(compras);
+        let whereClause = {};
+
+        if (tipoUsuario === "admin") {
+            // Si es admin, puede ver todas las compras
+            whereClause = {};
+        } else if (tipoUsuario === "vendedor") {
+            // Si es vendedor, solo las compras en las que vendió (donde usuarioId es el vendedor)
+            whereClause = { usuarioId };
+        } else if (tipoUsuario === "cliente") {
+            // Si es cliente, solo las compras que hizo (donde clienteId es el usuario)
+            whereClause = { clienteId: usuarioId };
+        } else {
+            return res.status(403).json({ error: "No tienes permisos para ver las compras" });
         }
 
-        // Si es vendedor, solo devolver las compras realizadas por el vendedor logeado
         const compras = await db.compra.findAll({
-            where: {
-                usuarioId: usuarioId  // ✅ Filtrar por compras del vendedor logeado
-            },
+            where: whereClause,
             include: [
                 { 
                     model: db.usuario, 
@@ -47,7 +39,7 @@ exports.listCompras = async (req, res) => {
                 },
                 { 
                     model: db.usuario, 
-                    as: "clienteCompra", 
+                    as: "clienteCompra",
                     attributes: ["id", "nombre", "apellido", "tipo"] 
                 }
             ]
@@ -60,6 +52,7 @@ exports.listCompras = async (req, res) => {
         sendError500(res, error);
     }
 };
+
 
 
 // 2. Obtener una compra por ID

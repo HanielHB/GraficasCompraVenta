@@ -21,6 +21,7 @@ const ComprasGrafico = ({ compras }) => {
     const [selectedProducto, setSelectedProducto] = useState('todos');
     const [vendedores, setvendedores] = useState([]);
     const [productos, setProductos] = useState([]);
+    const [tipoUsuario, setTipoUsuario] = useState(""); // Estado para almacenar el tipo de usuario
     const [chartData, setChartData] = useState({
         labels: [],
         datasets: []
@@ -28,6 +29,7 @@ const ComprasGrafico = ({ compras }) => {
 
     // Obtener lista de vendedores y productos únicos
     useEffect(() => {
+        obtenerTipoUsuario();
         if (compras) {
             const uniquevendedores = compras.reduce((acc, compra) => {
                 const comprador = compra.vendedorCompra;
@@ -60,6 +62,14 @@ const ComprasGrafico = ({ compras }) => {
             setProductos(uniqueProductos);
         }
     }, [compras]);
+
+    const obtenerTipoUsuario = () => {
+        const userData = localStorage.getItem("user");
+        if (userData) {
+            const user = JSON.parse(userData);
+            setTipoUsuario(user.tipo); // Asignamos el tipo de usuario
+        }
+    };
 
     const agruparComprasPorFecha = (comprasFiltradas, rango) => {
         const comprasAgrupadas = {};
@@ -191,18 +201,21 @@ const ComprasGrafico = ({ compras }) => {
             <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
                 <h3 className="mb-0">Análisis de Compras</h3>
                 <div className="d-flex gap-2 flex-wrap">
-                    <select 
-                        className="form-select"
-                        value={selectedVendedorId}
-                        onChange={(e) => setselectedVendedorId(e.target.value)}
-                    >
-                        <option value="todos">Todos los vendedores</option>
-                        {vendedores.map(v => (
-                            <option key={v.id} value={v.id}>
-                                {v.nombre} ({compras.filter(compra => compra.vendedorCompra.id === v.id).length} compras)
-                            </option>
-                        ))}
-                    </select>
+                    {tipoUsuario !== "cliente" && (
+                        <select 
+                            className="form-select"
+                            value={selectedVendedorId}
+                            onChange={(e) => setselectedVendedorId(e.target.value)}
+                        >
+                            <option value="todos">Todos los vendedores</option>
+                            {vendedores.map(v => (
+                                <option key={v.id} value={v.id}>
+                                    {v.nombre} ({compras.filter(compra => compra.vendedorCompra.id === v.id).length} compras)
+                                </option>
+                            ))}
+                        </select>
+                    )}
+                        
                     
                     <select 
                         className="form-select"

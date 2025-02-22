@@ -20,6 +20,10 @@ module.exports = (sequelize, Sequelize) => {
         productos: {
             type: Sequelize.JSON,
             allowNull: false
+        },
+        imagen: {
+            type: Sequelize.STRING,
+            allowNull: true
         }
     }, {
         timestamps: true,

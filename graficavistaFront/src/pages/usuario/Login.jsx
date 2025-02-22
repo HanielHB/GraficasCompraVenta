@@ -22,11 +22,14 @@ const Login = () => {
                 password,
             });
     
-            // Guardar el token y el usuarioId en localStorage
+            console.log("Respuesta del backend:", response.data); // 👀 Verificar en la consola
+    
+            // Guardar datos en localStorage
             localStorage.setItem("token", response.data.token);
             localStorage.setItem("usuarioId", response.data.usuario.id);
+            localStorage.setItem("user", JSON.stringify({ tipo: response.data.usuario.tipo })); // Guardar tipo de usuario
     
-            console.log("Usuario ID guardado:", response.data.usuario.id);
+        
     
             // Redirigir al dashboard
             navigate("/dashboard");
