@@ -60,16 +60,6 @@ const Dashboard = () => {
     
         
     }, []); 
-    
-    
-    useEffect(() => {
-        if (isVendedor) {
-            setShowUsuarios(false); // Ocultar usuarios
-            setShowVentasGraf(true); // Asegurarse de que el gráfico de ventas se muestra
-            navigate('/dashboard/ventas/grafico'); // Redirigir al gráfico de ventas
-        }
-    }, [isVendedor, navigate]); // Se ejecuta cuando cambia isVendedor
-    
 
     const verificarRol = () => {
         const token = localStorage.getItem("token");
